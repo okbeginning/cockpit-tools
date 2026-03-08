@@ -805,9 +805,16 @@ fn parse_gemini_remaining_percent(value: Option<&serde_json::Value>) -> Option<i
     None
 }
 
-fn collect_gemini_model_remaining(
+#[derive(Debug, Clone)]
+struct GeminiBucketRemaining {
+    model_id: String,
+    remaining_percent: i32,
+    reset_at: Option<i64>,
+}
+
+fn collect_gemini_bucket_remaining(
     account: &crate::models::gemini::GeminiAccount,
-) -> Vec<(String, i32)> {
+) -> Vec<GeminiBucketRemaining> {
     let Some(raw) = account.gemini_usage_raw.as_ref() else {
         return Vec::new();
     };
@@ -824,14 +831,66 @@ fn collect_gemini_model_remaining(
             .filter(|item| !item.is_empty())
             .map(|item| item.to_string());
         let remaining = parse_gemini_remaining_percent(bucket.get("remainingFraction"));
+        let reset_at = bucket.get("resetTime").and_then(parse_timestamp_like);
         let (Some(model_id), Some(remaining)) = (model_id, remaining) else {
             continue;
         };
-        values.push((model_id, remaining));
+        values.push(GeminiBucketRemaining {
+            model_id,
+            remaining_percent: remaining,
+            reset_at,
+        });
     }
 
-    values.sort_by(|a, b| a.0.cmp(&b.0));
+    values.sort_by(|a, b| a.model_id.cmp(&b.model_id));
     values
+}
+
+fn pick_lowest_gemini_bucket<'a, F>(
+    buckets: &'a [GeminiBucketRemaining],
+    matcher: F,
+) -> Option<&'a GeminiBucketRemaining>
+where
+    F: Fn(&str) -> bool,
+{
+    let mut matched = buckets.iter().filter(|bucket| matcher(&bucket.model_id));
+    let mut best = matched.next()?;
+    for current in matched {
+        if current.remaining_percent < best.remaining_percent {
+            best = current;
+            continue;
+        }
+        if current.remaining_percent > best.remaining_percent {
+            continue;
+        }
+        match (best.reset_at, current.reset_at) {
+            (None, Some(_)) => best = current,
+            (Some(_), None) => {}
+            (Some(best_ts), Some(current_ts)) if current_ts < best_ts => best = current,
+            _ => {}
+        }
+    }
+    Some(best)
+}
+
+fn normalize_gemini_plan_label(raw_plan: &str) -> &'static str {
+    let lower = raw_plan.trim().to_lowercase();
+    if lower.is_empty() {
+        return "UNKNOWN";
+    }
+    if lower.contains("ultra") {
+        return "ULTRA";
+    }
+    if lower == "standard-tier" {
+        return "FREE";
+    }
+    if lower.contains("pro") || lower.contains("premium") {
+        return "PRO";
+    }
+    if lower == "free-tier" || lower.contains("free") {
+        return "FREE";
+    }
+    "UNKNOWN"
 }
 
 fn resolve_gemini_current_account(
@@ -865,16 +924,33 @@ fn build_gemini_display_info(lang: &str) -> AccountDisplayInfo {
 
     if let Some(plan) = first_non_empty(&[account.plan_name.as_deref(), account.tier_id.as_deref()])
     {
-        quota_lines.push(format!("Plan: {}", plan));
+        quota_lines.push(format!("Plan: {}", normalize_gemini_plan_label(plan)));
     }
 
-    let model_remaining = collect_gemini_model_remaining(&account);
-    for (model, remaining) in model_remaining.iter().take(3) {
+    let buckets = collect_gemini_bucket_remaining(&account);
+    let pro_bucket = pick_lowest_gemini_bucket(&buckets, |model_id| {
+        model_id.to_lowercase().contains("pro")
+    });
+    let flash_bucket = pick_lowest_gemini_bucket(&buckets, |model_id| {
+        model_id.to_lowercase().contains("flash")
+    });
+
+    for (label, bucket) in [("Pro", pro_bucket), ("Flash", flash_bucket)] {
+        let value_text = if let Some(item) = bucket {
+            format!("{}% {}", item.remaining_percent, get_text("left", lang))
+        } else {
+            "--".to_string()
+        };
+        let reset_text = if let Some(item) = bucket {
+            format_reset_time_from_ts(lang, item.reset_at)
+        } else {
+            get_text("reset_unknown", lang)
+        };
         quota_lines.push(format_quota_line(
             lang,
-            model,
-            &format_percent_text(*remaining),
-            None,
+            label,
+            &value_text,
+            Some(&reset_text),
         ));
     }
 
@@ -1818,6 +1894,8 @@ fn get_text(key: &str, lang: &str) -> String {
         ("loading", "zh-cn") => "加载中...".to_string(),
         ("reset", "zh-cn") => "重置".to_string(),
         ("reset_done", "zh-cn") => "已重置".to_string(),
+        ("reset_unknown", "zh-cn") => "重置时间未知".to_string(),
+        ("left", "zh-cn") => "剩余".to_string(),
         ("included", "zh-cn") => "包含".to_string(),
         ("ghcp_inline", "zh-cn") => "Inline".to_string(),
         ("ghcp_chat", "zh-cn") => "Chat".to_string(),
@@ -1834,6 +1912,8 @@ fn get_text(key: &str, lang: &str) -> String {
         ("loading", "zh-tw") => "載入中...".to_string(),
         ("reset", "zh-tw") => "重置".to_string(),
         ("reset_done", "zh-tw") => "已重置".to_string(),
+        ("reset_unknown", "zh-tw") => "重置時間未知".to_string(),
+        ("left", "zh-tw") => "剩餘".to_string(),
         ("included", "zh-tw") => "已包含".to_string(),
         ("ghcp_inline", "zh-tw") => "Inline".to_string(),
         ("ghcp_chat", "zh-tw") => "Chat".to_string(),
@@ -1850,6 +1930,8 @@ fn get_text(key: &str, lang: &str) -> String {
         ("loading", "en") => "Loading...".to_string(),
         ("reset", "en") => "Reset".to_string(),
         ("reset_done", "en") => "Reset done".to_string(),
+        ("reset_unknown", "en") => "Reset time unknown".to_string(),
+        ("left", "en") => "left".to_string(),
         ("included", "en") => "Included".to_string(),
         ("ghcp_inline", "en") => "Inline".to_string(),
         ("ghcp_chat", "en") => "Chat".to_string(),
@@ -1866,6 +1948,8 @@ fn get_text(key: &str, lang: &str) -> String {
         ("loading", "ja") => "読み込み中...".to_string(),
         ("reset", "ja") => "リセット".to_string(),
         ("reset_done", "ja") => "リセット済み".to_string(),
+        ("reset_unknown", "ja") => "リセット時間不明".to_string(),
+        ("left", "ja") => "残り".to_string(),
         ("included", "ja") => "含まれる".to_string(),
         ("ghcp_inline", "ja") => "Inline".to_string(),
         ("ghcp_chat", "ja") => "Chat".to_string(),
@@ -1884,6 +1968,8 @@ fn get_text(key: &str, lang: &str) -> String {
         ("loading", "ru") => "Загрузка...".to_string(),
         ("reset", "ru") => "Сброс".to_string(),
         ("reset_done", "ru") => "Сброс выполнен".to_string(),
+        ("reset_unknown", "ru") => "Время сброса неизвестно".to_string(),
+        ("left", "ru") => "осталось".to_string(),
         ("included", "ru") => "Включено".to_string(),
         ("ghcp_inline", "ru") => "Inline".to_string(),
         ("ghcp_chat", "ru") => "Chat".to_string(),
@@ -1900,6 +1986,8 @@ fn get_text(key: &str, lang: &str) -> String {
         ("loading", _) => "Loading...".to_string(),
         ("reset", _) => "Reset".to_string(),
         ("reset_done", _) => "Reset done".to_string(),
+        ("reset_unknown", _) => "Reset time unknown".to_string(),
+        ("left", _) => "left".to_string(),
         ("included", _) => "Included".to_string(),
         ("ghcp_inline", _) => "Inline".to_string(),
         ("ghcp_chat", _) => "Chat".to_string(),
