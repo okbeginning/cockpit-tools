@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { PlatformInstancesContent } from '../components/platform/PlatformInstancesContent';
 import { useCodebuddyCnInstanceStore } from '../stores/useCodebuddyCnInstanceStore';
 import { useCodebuddyCnAccountStore } from '../stores/useCodebuddyCnAccountStore';
-import type { CodebuddyAccount } from '../types/codebuddy';
+import type { CodebuddyCnAccount } from '../types/codebuddy';
 import {
   getCodebuddyAccountDisplayEmail,
   getCodebuddyPlanBadge,
@@ -13,7 +13,7 @@ import { DosageNotifyQuotaPreview } from '../components/platform/DosageNotifyQuo
 import { CheckCircle } from 'lucide-react';
 
 interface CodebuddyCnInstancesContentProps {
-  accountsForSelect?: CodebuddyAccount[];
+  accountsForSelect?: CodebuddyCnAccount[];
 }
 
 export function CodebuddyCnInstancesContent({
@@ -26,7 +26,7 @@ export function CodebuddyCnInstancesContent({
   const sourceAccounts = accountsForSelect ?? storeAccounts;
   const isSupportedPlatform = usePlatformRuntimeSupport('desktop');
 
-  const renderCodebuddyCnQuotaPreview = (account: CodebuddyAccount) => {
+  const renderCodebuddyCnQuotaPreview = (account: CodebuddyCnAccount) => {
     const usage = getCodebuddyUsage(account);
     return (
       <DosageNotifyQuotaPreview
@@ -41,7 +41,7 @@ export function CodebuddyCnInstancesContent({
   };
 
   return (
-    <PlatformInstancesContent<CodebuddyAccount>
+    <PlatformInstancesContent<CodebuddyCnAccount>
       instanceStore={instanceStore}
       accounts={sourceAccounts}
       fetchAccounts={fetchAccounts}
