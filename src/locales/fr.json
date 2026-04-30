@@ -1599,6 +1599,14 @@
     "switch": "Basculer",
     "switched": "Basculé vers {{email}}",
     "switchFailed": "Échec du basculement : {{error}}",
+    "authError": {
+      "badge": "Problème d’autorisation",
+      "refreshTokenReused": "L’autorisation Codex est invalide : le refresh_token a déjà été utilisé par un autre client ou une autre instance. Reconnectez-vous et évitez de renouveler le même compte en même temps depuis Codex officiel, d’autres instances ou des outils externes.",
+      "refreshTokenExpired": "L’autorisation de connexion Codex a expiré et ne peut pas être renouvelée automatiquement. Reconnectez-vous au compte Codex.",
+      "refreshTokenInvalidated": "L’autorisation de connexion Codex a été révoquée par le service et ne peut pas être renouvelée automatiquement. Reconnectez-vous au compte Codex.",
+      "invalidGrant": "L’autorisation de connexion Codex est invalide et ne peut pas être renouvelée automatiquement. Reconnectez-vous au compte Codex.",
+      "unsupportedCountryRegion": "La région réseau actuelle ne permet pas de renouveler l’autorisation Codex. Le service d’autorisation OpenAI a refusé cette sortie réseau. Passez à une région prise en charge puis réessayez."
+    },
     "current": "Actuel",
     "empty": {
       "description": "Cliquez sur « Ajouter un compte » pour commencer"
@@ -1815,7 +1823,14 @@
       "hourly": "Quota de 5 heures",
       "weeklyReset": "Heure de réinitialisation hebdomadaire",
       "hourlyReset": "Heure de réinitialisation sur 5 heures",
-      "subscriptionExpiry": "Expiration abonnement"
+      "subscriptionExpiry": "Expiration abonnement",
+      "custom": "Ordre personnalisé",
+      "customModalTitle": "Ordre des comptes",
+      "customModalDesc": "Faites glisser les comptes ou utilisez les boutons haut/bas pour ajuster l’ordre.",
+      "customDragHandle": "Faire glisser",
+      "customMoveUp": "Monter",
+      "customMoveDown": "Descendre",
+      "customReset": "Réinitialiser l’ordre"
     },
     "opencodeSwitch": "Interrupteur OpenCode",
     "opencodeSwitchDesc": "Synchroniser le changement de compte Codex dans OpenCode",
@@ -2281,6 +2296,14 @@
       "filterWithin7d": "7 j ({{count}})",
       "filterWithin30d": "30 j ({{count}})",
       "filterMissing": "Inconnus ({{count}})"
+    },
+    "apiSwitchNotice": {
+      "title": "Les sessions peuvent être masquées après le passage à l’API",
+      "message": "En raison du comportement officiel de Codex, les sessions existantes peuvent ne pas s’afficher automatiquement après le passage à API Key / API Service. Vous pouvez les restaurer plus tard via Gestion des sessions > Réparer la visibilité, ou lancer une réparation rapide pendant ce changement.",
+      "dontAskAgain": "Ne plus afficher",
+      "switchOnly": "Changer seulement",
+      "switchAndRepair": "Changer et réparer",
+      "repairFailed": "Le changement est terminé, mais la réparation rapide a échoué. Vous pouvez réessayer plus tard via Gestion des sessions > Réparer la visibilité."
     }
   },
   "githubCopilot": {
@@ -2319,7 +2342,8 @@
       "premium": "Requêtes premium"
     },
     "usage": {
-      "included": "Inclus"
+      "included": "Inclus",
+      "usedOfTotal": "{{used}} sur {{total}}"
     },
     "injectToVSCode": "Basculer vers VS Code",
     "injectSuccess": "Le jeton a été injecté dans VS Code avec succès. VS Code est en cours de lancement.",
@@ -3372,11 +3396,11 @@
       "status": "Statut du check-in",
       "checkedIn": "Check-in effectué",
       "notCheckedIn": "Pas encore check-in",
-      "button": {},
+      "button": "S’enregistrer",
       "button.loading": "Check-in en cours...",
       "done": "Terminé",
       "success": "Check-in réussi ! Série de {{days}} jours",
-      "failure": {},
+      "failure": "Échec de l’enregistrement : {{message}}",
       "failure.network": "Erreur réseau, veuillez réessayer plus tard",
       "lastCheckin": "Dernier check-in : {{time}}",
       "streak": "Série de {{days}} jours",
@@ -3407,9 +3431,9 @@
     "addAccount": "Ajouter un compte WorkBuddy",
     "flowNotice": {
       "title": "Informations sur la gestion des comptes WorkBuddy (cliquer pour developper/reduire)",
-      "desc": "Le changement de compte necessite la lecture du stockage d'authentification local de WorkBuddy et l'appel aux services d'identifiants du systeme pour dechiffrer/rechiffrer. Les donnees sont traitees uniquement en local.",
-      "permission": "Portee des autorisations : lire la base d'authentification WorkBuddy (state.vscdb), appeler les capacites d'identifiants du systeme (Trousseau macOS / DPAPI Windows / Secret Service Linux) pour le dechiffrement et la reecriture.",
-      "network": "Portee reseau : la connexion OAuth et l'actualisation du jeton necessitent des requetes vers WorkBuddy ; les requetes de quota appellent les API de facturation. Aucune cle locale ni information d'identification n'est televersee."
+      "desc": "Le changement de compte écrit le fichier de connexion local selon la structure la plus récente du client officiel WorkBuddy ; l'import local lit le même fichier. Les données sont traitées uniquement en local.",
+      "permission": "Portée des autorisations : lire et écrire le fichier de connexion WorkBuddy (CodeBuddyExtension/Data/Public/auth/workbuddy-desktop.info) pour l'import local et le changement de compte ; l'ancien state.vscdb n'est plus lu ni modifié.",
+      "network": "Portée réseau : la connexion OAuth et l'actualisation du jeton nécessitent des requêtes vers WorkBuddy ; les requêtes de quota appellent les API de facturation. Les fichiers de connexion locaux et les identifiants bruts ne sont pas téléversés."
     },
     "nickname": "Surnom",
     "enterprise": "Entreprise",

@@ -7,6 +7,23 @@ All notable changes to Cockpit Tools will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
+## [0.22.16] - 2026-04-30
+
+### Changed
+- **Codex OAuth token management now uses a guarded official-client refresh path**: refresh requests use the official JSON payload with connector scopes, account refresh reloads newer official Keychain/auth snapshots for the same account before rotating tokens, and TokenKeeper performs an 8-day guarded keepalive so refreshed token chains are written through before stale `refresh_token` values are reused.
+- **WorkBuddy account switching now writes the shared client auth file directly**: switch, inject, and local import flows use `CodeBuddyExtension/Data/Public/auth/workbuddy-desktop.info` instead of VS Code `state.vscdb` secret injection, matching the current desktop client storage shape without requiring a prior Keychain-backed secret store.
+- **GitHub Copilot account presentation now distinguishes PRO+ premium entitlement**: plan badges, filters, dashboard cards, floating cards, instance badges, and quota presentation recognize PRO+ and show premium request usage as used/total when exact counters are available.
+- **Trae OAuth login now normalizes app version and product detection**: login context discovery accepts app directories and executable paths, and auth requests now use a minimum supported app version of `3.5.54` instead of falling back to stale plugin/version fields.
+- **Codex account overview now supports custom account ordering and safer API-mode switching**: users can persist a custom display order, and switching from OAuth to API Key/API Service shows a session-visibility notice with an optional one-time repair action.
+
+### Fixed
+- **Codex auth failures now explain the real refresh-token failure mode**: reused, expired, revoked, invalid, or missing refresh tokens ask the user to log in again, while `unsupported_country_region_territory` tells the user to change network region without marking the account as permanently requiring reauthorization.
+- **Instance auto-refresh no longer interrupts active instance menus or modals**: background refresh pauses while inline menus or instance dialogs are open.
+
+### Removed
+- **Official Linux/Ubuntu release support has been removed**: release workflows no longer build Ubuntu packages, updater metadata no longer requires Linux AppImage/deb/rpm assets, and official documentation now lists macOS and Windows as the supported desktop platforms.
+
+---
 ## [0.22.15] - 2026-04-29
 
 ### Changed

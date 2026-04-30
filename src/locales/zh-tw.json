@@ -1599,6 +1599,14 @@
     "switch": "切換",
     "switched": "已切換至 {{email}}",
     "switchFailed": "切換失敗: {{error}}",
+    "authError": {
+      "badge": "授權異常",
+      "refreshTokenReused": "Codex 授權已失效：refresh_token 已被其他客戶端或實例使用過。請重新登入，並避免官方 Codex、其他實例或外部工具同時刷新同一帳號。",
+      "refreshTokenExpired": "Codex 登入授權已過期，無法自動刷新。請重新登入 Codex 帳號。",
+      "refreshTokenInvalidated": "Codex 登入授權已被服務端撤銷，無法自動刷新。請重新登入 Codex 帳號。",
+      "invalidGrant": "Codex 登入授權無效，無法自動刷新。請重新登入 Codex 帳號。",
+      "unsupportedCountryRegion": "目前網路地區不支援刷新 Codex 授權。OpenAI 授權服務拒絕了目前網路出口的刷新請求，請切換到支援的網路地區後重試。"
+    },
     "current": "目前",
     "empty": {
       "description": "點擊「新增帳號」開始管理您的 Codex 帳號"
@@ -1901,7 +1909,14 @@
       "hourly": "按5小時配額",
       "weeklyReset": "按週配額重置時間",
       "hourlyReset": "按5小時配額重置時間",
-      "subscriptionExpiry": "按訂閱到期"
+      "subscriptionExpiry": "按訂閱到期",
+      "custom": "自訂順序",
+      "customModalTitle": "自訂帳號排序",
+      "customModalDesc": "拖曳帳號或使用上下按鈕調整顯示順序。",
+      "customDragHandle": "拖曳排序",
+      "customMoveUp": "上移",
+      "customMoveDown": "下移",
+      "customReset": "重設自訂順序"
     },
     "opencodeSwitch": "OpenCode 切換開關",
     "opencodeSwitchDesc": "同步切換 OpenCode 裡的 Codex 帳號資訊",
@@ -2281,6 +2296,14 @@
       "filterWithin7d": "7 天 ({{count}})",
       "filterWithin30d": "30 天 ({{count}})",
       "filterMissing": "未知 ({{count}})"
+    },
+    "apiSwitchNotice": {
+      "title": "切換到 API 後，工作階段可能暫時不可見",
+      "message": "由於 Codex 官方機制，切換到 API Key / API 服務後，原有工作階段可能不會自動顯示。你可以稍後透過「工作階段管理」中的「修復可見性」恢復，也可以在本次切換時快速修復一次。",
+      "dontAskAgain": "不再提示",
+      "switchOnly": "僅切換",
+      "switchAndRepair": "切換並修復一次",
+      "repairFailed": "已完成切換，但快速修復失敗。你仍可稍後在「工作階段管理」中使用「修復可見性」重試。"
     }
   },
   "githubCopilot": {
@@ -2319,7 +2342,8 @@
       "premium": "進階請求"
     },
     "usage": {
-      "included": "已包含"
+      "included": "已包含",
+      "usedOfTotal": "{{used}} / {{total}} 已用"
     },
     "injectToVSCode": "切換到 VS Code",
     "injectSuccess": "已成功將權杖注入 VS Code，VS Code 正在啟動。",
@@ -3372,11 +3396,11 @@
       "status": "簽到狀態",
       "checkedIn": "已簽到",
       "notCheckedIn": "未簽到",
-      "button": {},
+      "button": "簽到",
       "button.loading": "簽到中...",
       "done": "已完成",
       "success": "簽到成功！連續簽到 {{days}} 天",
-      "failure": {},
+      "failure": "簽到失敗：{{message}}",
       "failure.network": "網路異常，請稍後重試",
       "lastCheckin": "最後簽到：{{time}}",
       "streak": "連續簽到 {{days}} 天",
@@ -3407,9 +3431,9 @@
     "addAccount": "新增 WorkBuddy 帳號",
     "flowNotice": {
       "title": "WorkBuddy 帳號管理說明（點擊展開/收起）",
-      "desc": "切換帳號需讀取 WorkBuddy 本地認證儲存並呼叫系統憑證服務進行解密與重新加密，資料僅在本地處理。",
-      "permission": "權限範圍：讀取 WorkBuddy 認證資料庫（state.vscdb），呼叫系統憑證能力（macOS Keychain / Windows DPAPI / Linux Secret Service）進行解密與回寫。",
-      "network": "網路範圍：OAuth 登入與 Token 刷新需連線請求 WorkBuddy；配額查詢需呼叫計費 API。不會上傳本地金鑰或憑證。"
+      "desc": "切換帳號會依新版 WorkBuddy 官方用戶端規則寫入本機登入檔；本機匯入讀取同一檔案，資料僅在本機處理。",
+      "permission": "權限範圍：讀取並寫入 WorkBuddy 登入檔（CodeBuddyExtension/Data/Public/auth/workbuddy-desktop.info），用於本機匯入與帳號切換；不再讀取或修改舊版 state.vscdb。",
+      "network": "網路範圍：OAuth 登入與 Token 刷新需連線請求 WorkBuddy；配額查詢需呼叫計費 API。不會上傳本機登入檔或憑證原文。"
     },
     "nickname": "暱稱",
     "enterprise": "企業",

@@ -1353,6 +1353,12 @@
   color: var(--plan-pro-color);
 }
 
+.instances-page .instance-plan-badge.pro-plus {
+  background: var(--plan-ultra-bg);
+  border-color: var(--plan-ultra-border);
+  color: var(--plan-ultra-color);
+}
+
 .instances-page .instance-plan-badge.codex-pro-lite {
   background: linear-gradient(135deg, #f8fafc 0%, #dbeafe 45%, #a8b7ca 100%);
   border-color: rgba(100, 116, 139, 0.36);

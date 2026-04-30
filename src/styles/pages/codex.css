@@ -543,6 +543,28 @@
   flex-shrink: 0;
 }
 
+.codex-api-switch-notice-modal {
+  border-color: color-mix(in srgb, var(--primary) 16%, var(--border));
+}
+
+.codex-api-switch-notice-modal .modal-header {
+  border-bottom-color: color-mix(in srgb, var(--primary) 12%, var(--border-light));
+}
+
+.codex-api-switch-notice-options {
+  border-color: color-mix(in srgb, var(--primary) 14%, var(--border));
+  background: color-mix(in srgb, var(--bg-tertiary) 88%, var(--primary) 12%);
+}
+
+.codex-api-switch-notice-footer {
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.codex-api-switch-notice-footer .btn {
+  min-width: 96px;
+}
+
 .codex-local-access-table-row td {
   background: rgba(14, 165, 233, 0.04);
 }
@@ -1211,6 +1233,11 @@
 .codex-account-card .card-action-btn:hover {
   background: var(--bg-hover);
   color: var(--text-primary);
+}
+
+.codex-account-card .card-action-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .codex-account-card .card-action-btn.success:hover {
@@ -1999,8 +2026,206 @@
   transform: scale(1.05);
 }
 
+.codex-accounts-page .sort-direction-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .codex-accounts-page .sort-direction-btn:active {
   transform: scale(0.95);
+}
+
+.codex-custom-sort-modal {
+  width: min(680px, calc(100vw - 32px));
+  max-height: min(760px, calc(100vh - 48px));
+}
+
+.codex-custom-sort-modal .modal-header {
+  align-items: flex-start;
+}
+
+.codex-custom-sort-modal-desc {
+  margin: 6px 0 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.codex-custom-sort-modal .modal-body {
+  max-height: min(560px, calc(100vh - 220px));
+  overflow: auto;
+}
+
+.codex-custom-sort-list {
+  display: grid;
+  gap: 8px;
+}
+
+.codex-custom-sort-list.is-sorting {
+  user-select: none;
+}
+
+.codex-custom-sort-list.is-sorting .codex-custom-sort-row,
+.codex-custom-sort-list.is-sorting .codex-custom-sort-drag-handle {
+  cursor: grabbing;
+}
+
+.codex-custom-sort-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  background: var(--bg-card);
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
+}
+
+.codex-custom-sort-row:hover {
+  background: var(--bg-hover);
+  border-color: var(--border);
+}
+
+.codex-custom-sort-row.is-dragging {
+  border-color: color-mix(in srgb, var(--primary) 42%, var(--border));
+  background: var(--bg-hover);
+  box-shadow: var(--shadow-sm);
+  transform: scale(1.005);
+}
+
+.codex-custom-sort-row.is-drop-candidate {
+  border-style: dashed;
+}
+
+.codex-custom-sort-row.is-drop-target {
+  border-color: color-mix(in srgb, var(--primary) 62%, var(--border));
+  background: var(--bg-hover);
+}
+
+.codex-custom-sort-row-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.codex-custom-sort-drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: grab;
+  flex-shrink: 0;
+}
+
+.codex-custom-sort-drag-handle:hover {
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+}
+
+.codex-custom-sort-index {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.codex-custom-sort-account {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.codex-custom-sort-account-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.codex-custom-sort-account-title > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.codex-custom-sort-quota-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.codex-custom-sort-quota {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.codex-custom-sort-quota strong {
+  font-family: var(--font-mono);
+}
+
+.codex-custom-sort-quota strong.good,
+.codex-custom-sort-quota strong.normal {
+  color: var(--success);
+}
+
+.codex-custom-sort-quota strong.warning {
+  color: var(--warning);
+}
+
+.codex-custom-sort-quota strong.danger {
+  color: var(--danger);
+}
+
+.codex-custom-sort-quota-empty {
+  color: var(--text-muted);
+}
+
+.codex-custom-sort-row-actions {
+  display: inline-flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.codex-custom-sort-row-actions .folder-icon-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+  .codex-custom-sort-row {
+    align-items: flex-start;
+  }
+
+  .codex-custom-sort-row-main {
+    align-items: flex-start;
+  }
+
+  .codex-custom-sort-account-title {
+    flex-wrap: wrap;
+  }
 }
 
 /* 通用 modal-content 样式 */

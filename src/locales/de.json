@@ -1599,6 +1599,14 @@
     "switch": "Wechseln",
     "switched": "Gewechselt zu {{email}}",
     "switchFailed": "Wechsel fehlgeschlagen: {{error}}",
+    "authError": {
+      "badge": "Autorisierungsproblem",
+      "refreshTokenReused": "Die Codex-Autorisierung ist ungültig: Der refresh_token wurde bereits von einem anderen Client oder einer anderen Instanz verwendet. Melden Sie sich erneut an und vermeiden Sie gleichzeitiges Aktualisieren desselben Kontos durch Codex, andere Instanzen oder externe Tools.",
+      "refreshTokenExpired": "Die Codex-Anmeldeautorisierung ist abgelaufen und kann nicht automatisch erneuert werden. Melden Sie sich erneut beim Codex-Konto an.",
+      "refreshTokenInvalidated": "Die Codex-Anmeldeautorisierung wurde vom Dienst widerrufen und kann nicht automatisch erneuert werden. Melden Sie sich erneut beim Codex-Konto an.",
+      "invalidGrant": "Die Codex-Anmeldeautorisierung ist ungültig und kann nicht automatisch erneuert werden. Melden Sie sich erneut beim Codex-Konto an.",
+      "unsupportedCountryRegion": "Die aktuelle Netzwerkregion unterstützt das Erneuern der Codex-Autorisierung nicht. Der OpenAI-Autorisierungsdienst hat diesen Netzwerkausgang abgelehnt. Wechseln Sie in eine unterstützte Region und versuchen Sie es erneut."
+    },
     "current": "Aktuell",
     "empty": {
       "description": "Klicke auf \"Konto hinzufügen\", um zu starten"
@@ -1815,7 +1823,14 @@
       "hourly": "5-Stunden-Kontingent",
       "weeklyReset": "Wöchentliche Reset-Zeit",
       "hourlyReset": "5-Stunden-Reset-Zeit",
-      "subscriptionExpiry": "Abo-Ablauf"
+      "subscriptionExpiry": "Abo-Ablauf",
+      "custom": "Eigene Reihenfolge",
+      "customModalTitle": "Eigene Kontoreihenfolge",
+      "customModalDesc": "Ziehen Sie Konten oder nutzen Sie die Hoch-/Runter-Tasten, um die Reihenfolge anzupassen.",
+      "customDragHandle": "Zum Sortieren ziehen",
+      "customMoveUp": "Nach oben",
+      "customMoveDown": "Nach unten",
+      "customReset": "Reihenfolge zurücksetzen"
     },
     "opencodeSwitch": "OpenCode-Schalter",
     "opencodeSwitchDesc": "Wechsel des Codex-Kontos in OpenCode synchronisieren",
@@ -2281,6 +2296,14 @@
       "filterWithin7d": "7 T. ({{count}})",
       "filterWithin30d": "30 T. ({{count}})",
       "filterMissing": "Unbekannt ({{count}})"
+    },
+    "apiSwitchNotice": {
+      "title": "Sitzungen können nach dem API-Wechsel kurz ausgeblendet sein",
+      "message": "Aufgrund des offiziellen Codex-Verhaltens erscheinen vorhandene Sitzungen nach dem Wechsel zu API Key / API Service möglicherweise nicht automatisch. Sie können sie später unter Sitzungsverwaltung > Sichtbarkeit reparieren wiederherstellen oder bei diesem Wechsel einmal schnell reparieren.",
+      "dontAskAgain": "Nicht mehr anzeigen",
+      "switchOnly": "Nur wechseln",
+      "switchAndRepair": "Wechseln & reparieren",
+      "repairFailed": "Der Wechsel ist abgeschlossen, aber die Schnellreparatur ist fehlgeschlagen. Sie können es später unter Sitzungsverwaltung > Sichtbarkeit reparieren erneut versuchen."
     }
   },
   "githubCopilot": {
@@ -2319,7 +2342,8 @@
       "premium": "Premium-Anfragen"
     },
     "usage": {
-      "included": "Inbegriffen"
+      "included": "Inbegriffen",
+      "usedOfTotal": "{{used}} von {{total}}"
     },
     "injectToVSCode": "Zu VS Code wechseln",
     "injectSuccess": "Das Token wurde erfolgreich in VS Code eingefügt. VS Code wird gestartet.",
@@ -3372,11 +3396,11 @@
       "status": "Check-in-Status",
       "checkedIn": "Eingecheckt",
       "notCheckedIn": "Nicht eingecheckt",
-      "button": {},
+      "button": "Einchecken",
       "button.loading": "Check-in läuft...",
       "done": "Fertig",
       "success": "Check-in erfolgreich! {{days}} Tage Serie",
-      "failure": {},
+      "failure": "Einchecken fehlgeschlagen: {{message}}",
       "failure.network": "Netzwerkfehler, bitte später erneut versuchen",
       "lastCheckin": "Letzter Check-in: {{time}}",
       "streak": "{{days}}-Tage-Serie",
@@ -3407,9 +3431,9 @@
     "addAccount": "WorkBuddy-Konto hinzufügen",
     "flowNotice": {
       "title": "Hinweise zur WorkBuddy-Kontoverwaltung (zum Ein-/Ausklappen klicken)",
-      "desc": "Zum Wechseln von Konten muss der lokale Auth-Speicher von WorkBuddy gelesen und der System-Zugangsdienst zum Entschlüsseln/Verschlüsseln verwendet werden. Die Daten werden nur lokal verarbeitet.",
-      "permission": "Berechtigungsumfang: Lesen der WorkBuddy-Authentifizierungsdatenbank (state.vscdb) und Nutzung der System-Zugangsdienste (macOS Keychain / Windows DPAPI / Linux Secret Service) zum Entschlüsseln und Zurückschreiben.",
-      "network": "Netzwerkumfang: OAuth-Anmeldung und Token-Aktualisierung senden Anfragen an WorkBuddy; Kontingentabfragen nutzen Billing-APIs. Lokale Schlüssel oder Zugangsdaten werden nicht hochgeladen."
+      "desc": "Beim Kontowechsel wird die lokale Anmeldedatei nach dem aktuellen Layout des offiziellen WorkBuddy-Clients geschrieben; der lokale Import liest dieselbe Datei. Die Daten werden nur lokal verarbeitet.",
+      "permission": "Berechtigungsumfang: Lesen und Schreiben der WorkBuddy-Anmeldedatei (CodeBuddyExtension/Data/Public/auth/workbuddy-desktop.info) für lokalen Import und Kontowechsel; die alte state.vscdb wird nicht mehr gelesen oder geändert.",
+      "network": "Netzwerkumfang: OAuth-Anmeldung und Token-Aktualisierung senden Anfragen an WorkBuddy; Kontingentabfragen nutzen Billing-APIs. Lokale Anmeldedateien oder rohe Zugangsdaten werden nicht hochgeladen."
     },
     "nickname": "Spitzname",
     "enterprise": "Unternehmen",

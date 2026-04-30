@@ -1645,6 +1645,22 @@
     "switch": "Switch",
     "switched": "Switched to {{email}}",
     "switchFailed": "Switch failed: {{error}}",
+    "authError": {
+      "badge": "Auth Issue",
+      "refreshTokenReused": "Codex authorization is invalid: the refresh_token was already used by another client or instance. Sign in again, and avoid refreshing the same account from official Codex, other instances, or external tools at the same time.",
+      "refreshTokenExpired": "Codex login authorization has expired and cannot be refreshed automatically. Sign in to the Codex account again.",
+      "refreshTokenInvalidated": "Codex login authorization was revoked by the service and cannot be refreshed automatically. Sign in to the Codex account again.",
+      "invalidGrant": "Codex login authorization is invalid and cannot be refreshed automatically. Sign in to the Codex account again.",
+      "unsupportedCountryRegion": "The current network region does not support refreshing Codex authorization. OpenAI authorization rejected this network exit. Switch to a supported region and retry."
+    },
+    "apiSwitchNotice": {
+      "title": "Sessions may be temporarily hidden after switching to API",
+      "message": "Because of Codex's official behavior, existing sessions may not appear automatically after switching to API Key / API Service. You can restore them later from Session Management > Repair Visibility, or run one quick repair during this switch.",
+      "dontAskAgain": "Don't show again",
+      "switchOnly": "Switch Only",
+      "switchAndRepair": "Switch & Repair Once",
+      "repairFailed": "Switch completed, but the quick repair failed. You can retry later from Session Management > Repair Visibility."
+    },
     "current": "Current",
     "account": {
       "personal": "Personal account"
@@ -2091,7 +2107,14 @@
       "hourly": "5-hour quota",
       "weeklyReset": "Weekly reset time",
       "hourlyReset": "5-hour reset time",
-      "subscriptionExpiry": "Subscription term"
+      "subscriptionExpiry": "Subscription term",
+      "custom": "Custom order",
+      "customModalTitle": "Custom account order",
+      "customModalDesc": "Drag accounts or use the up and down buttons to adjust the display order.",
+      "customDragHandle": "Drag to sort",
+      "customMoveUp": "Move up",
+      "customMoveDown": "Move down",
+      "customReset": "Reset custom order"
     },
     "opencodeSwitch": "OpenCode switch toggle",
     "opencodeSwitchDesc": "Sync Codex account info in OpenCode",
@@ -2465,7 +2488,8 @@
       "premium": "Premium requests"
     },
     "usage": {
-      "included": "Included"
+      "included": "Included",
+      "usedOfTotal": "{{used}} / {{total}}"
     },
     "injectToVSCode": "Switch to VS Code",
     "injectSuccess": "Token injected to VS Code successfully. VS Code is launching.",
@@ -3525,9 +3549,9 @@
     "addAccount": "Add WorkBuddy Account",
     "flowNotice": {
       "title": "WorkBuddy Account Info (click to expand/collapse)",
-      "desc": "Switching accounts requires reading WorkBuddy local auth storage and calling system credential services for decryption/re-encryption. Data is processed locally only.",
-      "permission": "Permission scope: read WorkBuddy auth database (state.vscdb), call system credential capabilities (macOS Keychain / Windows DPAPI / Linux Secret Service) for decrypt/write-back.",
-      "network": "Network scope: OAuth login and token refresh require network requests to WorkBuddy; quota queries call billing APIs. No local keys or credentials are uploaded."
+      "desc": "Account switching writes the local sign-in file using the latest official WorkBuddy client layout; local import reads the same file. Data is processed locally only.",
+      "permission": "Permission scope: read and write the WorkBuddy sign-in file (CodeBuddyExtension/Data/Public/auth/workbuddy-desktop.info) for local import and account switching; the legacy state.vscdb is no longer read or modified.",
+      "network": "Network scope: OAuth login and token refresh require network requests to WorkBuddy; quota queries call billing APIs. Local sign-in files and raw credentials are not uploaded."
     },
     "nickname": "Nickname",
     "enterprise": "Enterprise",

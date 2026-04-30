@@ -1645,6 +1645,22 @@
     "switch": "切换",
     "switched": "已切换至 {{email}}",
     "switchFailed": "切换失败: {{error}}",
+    "authError": {
+      "badge": "授权异常",
+      "refreshTokenReused": "Codex 授权已失效：refresh_token 已被其它客户端或实例使用过。请重新登录，并避免官方 Codex、其它实例或外部工具同时刷新同一账号。",
+      "refreshTokenExpired": "Codex 登录授权已过期，无法自动刷新。请重新登录 Codex 账号。",
+      "refreshTokenInvalidated": "Codex 登录授权已被服务端撤销，无法自动刷新。请重新登录 Codex 账号。",
+      "invalidGrant": "Codex 登录授权无效，无法自动刷新。请重新登录 Codex 账号。",
+      "unsupportedCountryRegion": "当前网络地区不支持刷新 Codex 授权。OpenAI 授权服务拒绝了当前网络出口的刷新请求，请切换到支持的网络地区后重试。"
+    },
+    "apiSwitchNotice": {
+      "title": "切换到 API 后，会话可能暂时不可见",
+      "message": "由于 Codex 官方机制，切换到 API Key / API 服务后，原有会话可能不会自动显示。你可以在切换后通过「会话管理」里的「修复可见性」恢复，也可以在本次切换时快速修复一次。",
+      "dontAskAgain": "不再提示",
+      "switchOnly": "仅切换",
+      "switchAndRepair": "切换并修复一次",
+      "repairFailed": "已完成切换，但快捷修复失败。你仍可稍后在「会话管理」中使用「修复可见性」重试。"
+    },
     "current": "当前",
     "account": {
       "personal": "个人账户"
@@ -2091,7 +2107,14 @@
       "hourly": "按5小时配额",
       "weeklyReset": "按周配额重置时间",
       "hourlyReset": "按5小时配额重置时间",
-      "subscriptionExpiry": "按订阅有效期"
+      "subscriptionExpiry": "按订阅有效期",
+      "custom": "自定义顺序",
+      "customModalTitle": "自定义账号排序",
+      "customModalDesc": "拖动账号或使用上下按钮调整展示顺序。",
+      "customDragHandle": "拖拽排序",
+      "customMoveUp": "上移",
+      "customMoveDown": "下移",
+      "customReset": "重置自定义顺序"
     },
     "opencodeSwitch": "OpenCode切换开关",
     "opencodeSwitchDesc": "同步切换OpenCode里codex账户信息",
@@ -2465,7 +2488,8 @@
       "premium": "Premium requests"
     },
     "usage": {
-      "included": "Included"
+      "included": "已包含",
+      "usedOfTotal": "{{used}} / {{total}}"
     },
     "injectToVSCode": "切换到 VS Code",
     "injectSuccess": "已成功将令牌注入 VS Code，VS Code 正在启动。",
@@ -3525,9 +3549,9 @@
     "addAccount": "添加 WorkBuddy 账号",
     "flowNotice": {
       "title": "WorkBuddy 账号管理说明（点击展开/收起）",
-      "desc": "切换账号需读取 WorkBuddy 本地认证存储并调用系统凭据服务进行加解密，数据仅在本地处理。",
-      "permission": "权限范围：读取 WorkBuddy 认证数据库 (state.vscdb)，调用系统凭据能力（macOS Keychain / Windows DPAPI / Linux Secret Service）进行解密/回写。",
-      "network": "网络范围：OAuth 授权登录与 Token 刷新需联网请求 WorkBuddy；配额查询需调用计费 API。不上传本地密钥或凭证。"
+      "desc": "切换账号会按新版 WorkBuddy 官方客户端规则写入本机登录文件；本机导入读取同一登录文件，数据仅在本地处理。",
+      "permission": "权限范围：读取并写入 WorkBuddy 登录文件（CodeBuddyExtension/Data/Public/auth/workbuddy-desktop.info），用于本机导入与账号切换；不再读取或修改旧版 state.vscdb。",
+      "network": "网络范围：OAuth 授权登录与 Token 刷新需联网请求 WorkBuddy；配额查询需调用计费 API。不上传本地登录文件或凭证原文。"
     },
     "nickname": "昵称",
     "enterprise": "企业",

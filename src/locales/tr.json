@@ -1599,6 +1599,14 @@
     "switch": "Değiştir",
     "switched": "{{email}} hesabına geçildi",
     "switchFailed": "Değiştirme başarısız: {{error}}",
+    "authError": {
+      "badge": "Yetki sorunu",
+      "refreshTokenReused": "Codex yetkilendirmesi geçersiz: refresh_token başka bir istemci veya örnek tarafından zaten kullanılmış. Yeniden oturum açın ve aynı hesabı resmi Codex, diğer örnekler veya harici araçlarla aynı anda yenilemeyin.",
+      "refreshTokenExpired": "Codex giriş yetkisi süresi doldu ve otomatik yenilenemiyor. Codex hesabına yeniden oturum açın.",
+      "refreshTokenInvalidated": "Codex giriş yetkisi servis tarafından iptal edildi ve otomatik yenilenemiyor. Codex hesabına yeniden oturum açın.",
+      "invalidGrant": "Codex giriş yetkisi geçersiz ve otomatik yenilenemiyor. Codex hesabına yeniden oturum açın.",
+      "unsupportedCountryRegion": "Geçerli ağ bölgesi Codex yetkilendirmesini yenilemeyi desteklemiyor. OpenAI yetkilendirme servisi bu ağ çıkışını reddetti. Desteklenen bir bölgeye geçip yeniden deneyin."
+    },
     "current": "Geçerli",
     "empty": {
       "description": "\"Hesap ekle\"ye tıklayın"
@@ -1815,7 +1823,14 @@
       "hourly": "5 saatlik kota",
       "weeklyReset": "Haftalık sıfırlama zamanı",
       "hourlyReset": "5 saatlik sıfırlama zamanı",
-      "subscriptionExpiry": "Abonelik bitişi"
+      "subscriptionExpiry": "Abonelik bitişi",
+      "custom": "Özel sıra",
+      "customModalTitle": "Özel hesap sırası",
+      "customModalDesc": "Hesapları sürükleyin veya yukarı/aşağı düğmeleriyle görünüm sırasını ayarlayın.",
+      "customDragHandle": "Sürükle",
+      "customMoveUp": "Yukarı",
+      "customMoveDown": "Aşağı",
+      "customReset": "Sırayı sıfırla"
     },
     "opencodeSwitch": "OpenCode geçiş anahtarı",
     "opencodeSwitchDesc": "OpenCode içinde Codex hesap geçişini senkronize et",
@@ -2281,6 +2296,14 @@
       "filterWithin7d": "7 gün ({{count}})",
       "filterWithin30d": "30 gün ({{count}})",
       "filterMissing": "Bilinmiyor ({{count}})"
+    },
+    "apiSwitchNotice": {
+      "title": "API’ye geçince oturumlar geçici olarak gizlenebilir",
+      "message": "Codex’in resmi davranışı nedeniyle API Key / API Service’e geçtikten sonra mevcut oturumlar otomatik görünmeyebilir. Bunları daha sonra Oturum Yönetimi > Görünürlüğü Onar bölümünden geri getirebilir veya bu geçiş sırasında bir kez hızlı onarım çalıştırabilirsiniz.",
+      "dontAskAgain": "Bir daha gösterme",
+      "switchOnly": "Sadece geç",
+      "switchAndRepair": "Geç ve onar",
+      "repairFailed": "Geçiş tamamlandı, ancak hızlı onarım başarısız oldu. Daha sonra Oturum Yönetimi > Görünürlüğü Onar bölümünden tekrar deneyebilirsiniz."
     }
   },
   "githubCopilot": {
@@ -2319,7 +2342,8 @@
       "premium": "Premium istekler"
     },
     "usage": {
-      "included": "Dahil"
+      "included": "Dahil",
+      "usedOfTotal": "{{used}} / {{total}} kullanıldı"
     },
     "injectToVSCode": "VS Code'a geç",
     "injectSuccess": "Belirteç VS Code'a başarıyla enjekte edildi. VS Code başlatılıyor.",
@@ -3372,11 +3396,11 @@
       "status": "Check-in durumu",
       "checkedIn": "Check-in yapıldı",
       "notCheckedIn": "Check-in yapılmadı",
-      "button": {},
+      "button": "Yoklama",
       "button.loading": "Check-in yapılıyor...",
       "done": "Tamam",
       "success": "Check-in başarılı! {{days}} günlük seri",
-      "failure": {},
+      "failure": "Yoklama başarısız: {{message}}",
       "failure.network": "Ağ hatası, lütfen daha sonra tekrar deneyin",
       "lastCheckin": "Son check-in: {{time}}",
       "streak": "{{days}} günlük seri",
@@ -3407,9 +3431,9 @@
     "addAccount": "WorkBuddy Hesabı Ekle",
     "flowNotice": {
       "title": "WorkBuddy hesap yönetimi bilgisi (genişlet/daralt için tıklayın)",
-      "desc": "Hesap değiştirme için WorkBuddy yerel kimlik doğrulama deposu okunur ve şifre çözme/yeniden şifreleme için sistem kimlik bilgisi servisleri çağrılır. Veriler yalnızca yerelde işlenir.",
-      "permission": "İzin kapsamı: WorkBuddy kimlik veritabanını (state.vscdb) okuma; şifre çözme/geri yazma için sistem kimlik yeteneklerini çağırma (macOS Keychain / Windows DPAPI / Linux Secret Service).",
-      "network": "Ağ kapsamı: OAuth girişi ve belirteç yenileme için WorkBuddy'ye ağ istekleri gerekir; kota sorguları faturalama API'lerini çağırır. Yerel anahtarlar veya kimlik bilgileri yüklenmez."
+      "desc": "Hesap değiştirme, en yeni resmi WorkBuddy istemci düzenine göre yerel oturum açma dosyasını yazar; yerel içe aktarma aynı dosyayı okur. Veriler yalnızca yerelde işlenir.",
+      "permission": "İzin kapsamı: yerel içe aktarma ve hesap değiştirme için WorkBuddy oturum açma dosyasını (CodeBuddyExtension/Data/Public/auth/workbuddy-desktop.info) okuma ve yazma; eski state.vscdb artık okunmaz veya değiştirilmez.",
+      "network": "Ağ kapsamı: OAuth girişi ve belirteç yenileme için WorkBuddy'ye ağ istekleri gerekir; kota sorguları faturalama API'lerini çağırır. Yerel oturum açma dosyaları veya ham kimlik bilgileri yüklenmez."
     },
     "nickname": "Takma ad",
     "enterprise": "Kurumsal",

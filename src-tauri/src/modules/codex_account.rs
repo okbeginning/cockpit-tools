@@ -44,6 +44,7 @@ const CODEX_AUTO_SWITCH_ACCOUNT_SCOPE_ALL: &str = "all_accounts";
 const CODEX_AUTO_SWITCH_ACCOUNT_SCOPE_SELECTED: &str = "selected_accounts";
 const DISK_FULL_ERROR_CODE: &str = "DISK_FULL";
 const CODEX_TOKEN_SOURCE_MANAGED: &str = "managed";
+const CODEX_PROACTIVE_REFRESH_INTERVAL_SECONDS: i64 = 8 * 24 * 60 * 60;
 const CODEX_AUTH_PROJECTION_FILE_NAME: &str = ".cockpit_codex_auth.json";
 const CODEX_AUTH_PROJECTION_WRITER: &str = "cockpit";
 
@@ -1028,13 +1029,73 @@ fn sync_identity_from_tokens(account: &mut CodexAccount) {
     }
 }
 
-fn is_reauth_required_refresh_error(message: &str) -> bool {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum CodexRefreshErrorKind {
+    RefreshTokenReused,
+    RefreshTokenExpired,
+    RefreshTokenInvalidated,
+    InvalidGrant,
+    UnsupportedCountryRegion,
+    Other,
+}
+
+fn classify_refresh_error(message: &str) -> CodexRefreshErrorKind {
     let lower = message.to_ascii_lowercase();
-    lower.contains("refresh_token_reused")
+    if lower.contains("unsupported_country_region_territory") {
+        return CodexRefreshErrorKind::UnsupportedCountryRegion;
+    }
+    if lower.contains("refresh_token_reused") {
+        return CodexRefreshErrorKind::RefreshTokenReused;
+    }
+    if lower.contains("refresh_token_expired") {
+        return CodexRefreshErrorKind::RefreshTokenExpired;
+    }
+    if lower.contains("refresh_token_invalidated")
         || lower.contains("token_invalidated")
-        || lower.contains("invalid_grant")
-        || lower.contains("invalid refresh token")
         || lower.contains("authentication token has been invalidated")
+    {
+        return CodexRefreshErrorKind::RefreshTokenInvalidated;
+    }
+    if lower.contains("invalid_grant") || lower.contains("invalid refresh token") {
+        return CodexRefreshErrorKind::InvalidGrant;
+    }
+    CodexRefreshErrorKind::Other
+}
+
+fn is_reauth_required_refresh_error(message: &str) -> bool {
+    matches!(
+        classify_refresh_error(message),
+        CodexRefreshErrorKind::RefreshTokenReused
+            | CodexRefreshErrorKind::RefreshTokenExpired
+            | CodexRefreshErrorKind::RefreshTokenInvalidated
+            | CodexRefreshErrorKind::InvalidGrant
+    )
+}
+
+fn format_refresh_error_for_user(raw: &str) -> String {
+    match classify_refresh_error(raw) {
+        CodexRefreshErrorKind::RefreshTokenReused => format!(
+            "Codex 授权已失效：refresh_token 已被其它客户端或实例使用过。Codex 的 refresh_token 是轮换凭据，旧凭据再次刷新会被服务端拒绝。请重新登录，并避免官方 Codex、其它实例或外部工具同时刷新同一账号。原始错误: {}",
+            raw
+        ),
+        CodexRefreshErrorKind::RefreshTokenExpired => format!(
+            "Codex 登录授权已过期，无法自动刷新。请重新登录 Codex 账号。原始错误: {}",
+            raw
+        ),
+        CodexRefreshErrorKind::RefreshTokenInvalidated => format!(
+            "Codex 登录授权已被服务端撤销，无法自动刷新。请重新登录 Codex 账号。原始错误: {}",
+            raw
+        ),
+        CodexRefreshErrorKind::InvalidGrant => format!(
+            "Codex 登录授权无效，无法自动刷新。请重新登录 Codex 账号。原始错误: {}",
+            raw
+        ),
+        CodexRefreshErrorKind::UnsupportedCountryRegion => format!(
+            "当前网络地区不支持刷新 Codex 授权。OpenAI 授权服务拒绝了当前网络出口的刷新请求，请切换到支持的网络地区后重试。原始错误: {}",
+            raw
+        ),
+        CodexRefreshErrorKind::Other => format!("Token 已过期且刷新失败: {}", raw),
+    }
 }
 
 fn mark_account_requires_reauth(account: &mut CodexAccount, reason: &str) -> Result<(), String> {
@@ -1788,6 +1849,43 @@ struct LocalCodexOAuthSnapshot {
     subscription_active_until: Option<String>,
     account_id: Option<String>,
     organization_id: Option<String>,
+    last_refresh_at: Option<i64>,
+}
+
+fn parse_auth_file_last_refresh(value: Option<&serde_json::Value>) -> Option<i64> {
+    let value = value?;
+    if let Some(raw) = value.as_i64() {
+        return Some(if raw > 1_000_000_000_000 {
+            raw / 1000
+        } else {
+            raw
+        });
+    }
+    if let Some(raw) = value.as_u64() {
+        let normalized = if raw > 1_000_000_000_000 {
+            raw / 1000
+        } else {
+            raw
+        };
+        return i64::try_from(normalized).ok();
+    }
+
+    let raw = value.as_str()?.trim();
+    if raw.is_empty() {
+        return None;
+    }
+    if let Ok(parsed) = chrono::DateTime::parse_from_rfc3339(raw) {
+        return Some(parsed.timestamp());
+    }
+    if let Ok(parsed) = raw.parse::<i64>() {
+        return Some(if parsed > 1_000_000_000_000 {
+            parsed / 1000
+        } else {
+            parsed
+        });
+    }
+
+    None
 }
 
 fn build_local_oauth_snapshot(tokens: CodexAuthTokens) -> Option<LocalCodexOAuthSnapshot> {
@@ -1814,6 +1912,7 @@ fn build_local_oauth_snapshot(tokens: CodexAuthTokens) -> Option<LocalCodexOAuth
         subscription_active_until,
         account_id,
         organization_id,
+        last_refresh_at: None,
     })
 }
 
@@ -1834,7 +1933,10 @@ fn load_local_oauth_snapshot_from_auth_file(
         return None;
     }
 
-    build_local_oauth_snapshot(auth_file.tokens?)
+    let last_refresh_at = parse_auth_file_last_refresh(auth_file.last_refresh.as_ref());
+    let mut snapshot = build_local_oauth_snapshot(auth_file.tokens?)?;
+    snapshot.last_refresh_at = last_refresh_at;
+    Some(snapshot)
 }
 
 #[cfg(all(target_os = "macos", not(test)))]
@@ -2021,6 +2123,86 @@ fn apply_local_oauth_snapshot(
     }
 
     changed
+}
+
+fn local_oauth_snapshot_has_token_delta(
+    account: &CodexAccount,
+    snapshot: &LocalCodexOAuthSnapshot,
+) -> bool {
+    account.tokens.id_token != snapshot.tokens.id_token
+        || account.tokens.access_token != snapshot.tokens.access_token
+        || normalize_optional_ref(account.tokens.refresh_token.as_deref())
+            != normalize_optional_ref(snapshot.tokens.refresh_token.as_deref())
+}
+
+fn should_accept_authority_snapshot(
+    account: &CodexAccount,
+    snapshot: &LocalCodexOAuthSnapshot,
+) -> bool {
+    if !local_oauth_snapshot_has_token_delta(account, snapshot) {
+        return false;
+    }
+
+    let account_updated_at = account.token_updated_at.unwrap_or(0);
+    if snapshot
+        .last_refresh_at
+        .map(|value| value >= account_updated_at)
+        .unwrap_or(false)
+    {
+        return true;
+    }
+
+    codex_oauth::is_token_expired(&account.tokens.access_token)
+        && !codex_oauth::is_token_expired(&snapshot.tokens.access_token)
+}
+
+fn sync_account_from_authority_dir_if_current(
+    account: &mut CodexAccount,
+    base_dir: &Path,
+) -> Result<bool, String> {
+    let Some(snapshot) = load_local_oauth_snapshot_from_official_store(base_dir) else {
+        return Ok(false);
+    };
+
+    if !local_oauth_snapshot_matches_account(&snapshot, account) {
+        return Ok(false);
+    }
+
+    if !should_accept_authority_snapshot(account, &snapshot) {
+        return Ok(false);
+    }
+
+    if apply_local_oauth_snapshot(account, &snapshot) {
+        save_account(account)?;
+        logger::log_info(&format!(
+            "Codex 账号刷新前已采用更近的官方凭证: account_id={}, source_dir={}, last_refresh_at={}",
+            account.id,
+            base_dir.display(),
+            snapshot
+                .last_refresh_at
+                .map(|value| value.to_string())
+                .unwrap_or_else(|| "-".to_string())
+        ));
+        return Ok(true);
+    }
+
+    Ok(false)
+}
+
+fn sync_account_from_authority_sources(account: &mut CodexAccount) -> Result<bool, String> {
+    let mut dirs = vec![get_codex_home()];
+    dirs.extend(managed_projection_dirs_for_account(&account.id));
+
+    let mut seen = HashSet::new();
+    dirs.retain(|dir| seen.insert(dir.to_string_lossy().to_string()));
+
+    let mut changed = false;
+    for dir in dirs {
+        if sync_account_from_authority_dir_if_current(account, &dir)? {
+            changed = true;
+        }
+    }
+    Ok(changed)
 }
 
 fn sync_account_from_auth_dir_if_current(
@@ -2548,36 +2730,43 @@ fn write_managed_account_projections(account: &CodexAccount) {
     }
 }
 
-async fn refresh_managed_account_locked(
-    account_id: &str,
-    force: bool,
-    reason: &str,
-) -> Result<CodexAccount, String> {
-    let mut account =
-        load_account(account_id).ok_or_else(|| format!("账号不存在: {}", account_id))?;
-    if account.is_api_key_auth() {
-        return Ok(account);
-    }
-    if account.requires_reauth {
-        return Err(account
-            .reauth_reason
-            .clone()
-            .unwrap_or_else(|| "账号需要重新登录".to_string()));
-    }
-    if !force && !codex_oauth::is_token_expired(&account.tokens.access_token) {
-        return Ok(account);
+pub fn is_managed_auth_refresh_due(account: &CodexAccount) -> bool {
+    if account.is_api_key_auth() || account.requires_reauth {
+        return false;
     }
 
-    let refresh_token = account
+    if codex_oauth::is_token_expired(&account.tokens.access_token) {
+        return true;
+    }
+
+    account
+        .token_updated_at
+        .map(|updated_at| updated_at <= now_timestamp() - CODEX_PROACTIVE_REFRESH_INTERVAL_SECONDS)
+        .unwrap_or(true)
+}
+
+async fn perform_managed_token_refresh(
+    mut account: CodexAccount,
+    reason: &str,
+) -> Result<CodexAccount, String> {
+    let refresh_token = match account
         .tokens
         .refresh_token
         .clone()
         .filter(|token| !token.trim().is_empty())
-        .ok_or_else(|| "Token 已过期且无 refresh_token，请重新登录".to_string())?;
+    {
+        Some(token) => token,
+        None => {
+            let reason = "Codex 登录授权缺少 refresh_token，无法自动刷新。请重新登录 Codex 账号。"
+                .to_string();
+            let _ = mark_account_requires_reauth(&mut account, &reason);
+            return Err(reason);
+        }
+    };
 
     logger::log_info(&format!(
-        "Codex Token Authority 开始刷新: account_id={}, email={}, force={}, reason={}",
-        account.id, account.email, force, reason
+        "Codex Token Authority 开始刷新: account_id={}, email={}, reason={}",
+        account.id, account.email, reason
     ));
 
     match codex_oauth::refresh_access_token_with_fallback(
@@ -2599,14 +2788,43 @@ async fn refresh_managed_account_locked(
             Ok(account)
         }
         Err(err) => {
+            let user_error = format_refresh_error_for_user(&err);
             if is_reauth_required_refresh_error(&err) {
-                let reason = format!("Codex refresh_token 已失效，请重新登录: {}", err);
-                let _ = mark_account_requires_reauth(&mut account, &reason);
-                return Err(reason);
+                let _ = mark_account_requires_reauth(&mut account, &user_error);
+                return Err(user_error);
             }
-            Err(format!("Token 已过期且刷新失败: {}", err))
+            Err(user_error)
         }
     }
+}
+
+async fn refresh_managed_account_locked(
+    account_id: &str,
+    force: bool,
+    reason: &str,
+) -> Result<CodexAccount, String> {
+    let mut account =
+        load_account(account_id).ok_or_else(|| format!("账号不存在: {}", account_id))?;
+    if account.is_api_key_auth() {
+        return Ok(account);
+    }
+    if let Err(err) = sync_account_from_authority_sources(&mut account) {
+        logger::log_warn(&format!(
+            "Codex 账号刷新前同步官方凭证失败，继续使用账号库: account_id={}, error={}",
+            account.id, err
+        ));
+    }
+    if account.requires_reauth {
+        return Err(account
+            .reauth_reason
+            .clone()
+            .unwrap_or_else(|| "账号需要重新登录".to_string()));
+    }
+    if !force && !codex_oauth::is_token_expired(&account.tokens.access_token) {
+        return Ok(account);
+    }
+
+    perform_managed_token_refresh(account, reason).await
 }
 
 pub async fn ensure_managed_account_fresh(account_id: &str) -> Result<CodexAccount, String> {
@@ -2622,6 +2840,36 @@ pub async fn force_refresh_managed_account(
     let lock = codex_token_lock_for(account_id);
     let _guard = lock.lock().await;
     refresh_managed_account_locked(account_id, true, reason).await
+}
+
+pub async fn keepalive_managed_account(
+    account_id: &str,
+    reason: &str,
+) -> Result<CodexAccount, String> {
+    let lock = codex_token_lock_for(account_id);
+    let _guard = lock.lock().await;
+    let mut account =
+        load_account(account_id).ok_or_else(|| format!("账号不存在: {}", account_id))?;
+    if account.is_api_key_auth() {
+        return Ok(account);
+    }
+    if let Err(err) = sync_account_from_authority_sources(&mut account) {
+        logger::log_warn(&format!(
+            "Codex 保活同步官方凭证失败，继续使用账号库: account_id={}, error={}",
+            account.id, err
+        ));
+    }
+    if account.requires_reauth {
+        return Err(account
+            .reauth_reason
+            .clone()
+            .unwrap_or_else(|| "账号需要重新登录".to_string()));
+    }
+    if !is_managed_auth_refresh_due(&account) {
+        return Ok(account);
+    }
+
+    perform_managed_token_refresh(account, reason).await
 }
 
 pub async fn execute_with_managed_account_projection<R, F>(
@@ -2648,7 +2896,7 @@ where
     Ok((latest_account, result, sync_error))
 }
 
-/// 准备账号注入：账号中心是唯一 Token 真源，必要时刷新并投影到目标目录。
+/// 准备账号注入：刷新前会先采用更新的官方凭证，随后由账号中心写穿受管投影。
 pub async fn prepare_account_for_injection_from_auth_dir(
     account_id: &str,
     auth_dir: Option<&Path>,
@@ -2666,8 +2914,8 @@ pub async fn prepare_account_for_injection(account_id: &str) -> Result<CodexAcco
     prepare_account_for_injection_from_store(account_id).await
 }
 
-/// 准备账号注入（存储真源模式）：
-/// 仅使用账号中心存储作为 Token 真源，不从受管目录/本地 auth.json 回读，避免旧快照反向覆盖。
+/// 准备账号注入（账号中心模式）：
+/// 账号中心负责最终写穿；刷新前只接受带有更新 last_refresh 或未过期访问令牌的官方凭证。
 pub async fn prepare_account_for_injection_from_store(
     account_id: &str,
 ) -> Result<CodexAccount, String> {
@@ -3073,15 +3321,16 @@ fn extract_codex_tokens_from_value(
 mod tests {
     use super::{
         build_account_storage_id, detect_auth_file_plan_type_from_path,
-        extract_codex_tokens_from_value, get_accounts_dir, get_accounts_storage_path,
-        get_current_account, list_accounts_checked, load_account, load_account_index,
-        read_api_provider_from_config_toml, read_quick_config_from_config_toml,
-        resolve_api_provider_config, save_account, save_account_index, sync_account_from_auth_dir,
+        extract_codex_tokens_from_value, format_refresh_error_for_user, get_accounts_dir,
+        get_accounts_storage_path, get_current_account, list_accounts_checked, load_account,
+        load_account_index, parse_auth_file_last_refresh, read_api_provider_from_config_toml,
+        read_quick_config_from_config_toml, resolve_api_provider_config, save_account,
+        save_account_index, should_accept_authority_snapshot, sync_account_from_auth_dir,
         sync_managed_projection_from_auth_dir, validate_api_key_credentials,
         write_api_provider_to_config_toml, write_managed_projection_to_dir,
         write_quick_config_to_config_toml, ApiProviderConfig, CodexAccountIndex,
-        CodexAccountSummary, CodexAuthFile, CodexAuthTokens, CODEX_AUTO_COMPACT_DEFAULT_LIMIT,
-        CODEX_CONTEXT_WINDOW_1M_VALUE,
+        CodexAccountSummary, CodexAuthFile, CodexAuthTokens, LocalCodexOAuthSnapshot,
+        CODEX_AUTO_COMPACT_DEFAULT_LIMIT, CODEX_CONTEXT_WINDOW_1M_VALUE,
     };
     use crate::models::codex::{CodexAccount, CodexApiProviderMode, CodexTokens};
     use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
@@ -3281,6 +3530,77 @@ mod tests {
         assert_eq!(tokens.access_token, "access.jwt.token");
         assert_eq!(tokens.refresh_token.as_deref(), Some("rt_456"));
         assert_eq!(account_id_hint.as_deref(), Some("acc_2"));
+    }
+
+    #[test]
+    fn parses_auth_file_last_refresh_variants() {
+        assert_eq!(
+            parse_auth_file_last_refresh(Some(&serde_json::json!("2026-04-13T00:00:00.000000Z"))),
+            Some(1_776_038_400)
+        );
+        assert_eq!(
+            parse_auth_file_last_refresh(Some(&serde_json::json!(1_765_497_600_123i64))),
+            Some(1_765_497_600)
+        );
+        assert_eq!(
+            parse_auth_file_last_refresh(Some(&serde_json::json!(1_765_497_600i64))),
+            Some(1_765_497_600)
+        );
+    }
+
+    #[test]
+    fn formats_refresh_errors_with_actionable_reason() {
+        let reused = format_refresh_error_for_user(
+            "Token 刷新失败: status=401 Unauthorized, error_code=refresh_token_reused",
+        );
+        assert!(reused.contains("refresh_token 已被其它客户端或实例使用过"));
+        assert!(reused.contains("请重新登录"));
+
+        let region = format_refresh_error_for_user(
+            "Token 刷新失败: status=403 Forbidden, error_code=unsupported_country_region_territory",
+        );
+        assert!(region.contains("当前网络地区不支持刷新 Codex 授权"));
+        assert!(!region.contains("请重新登录"));
+    }
+
+    #[test]
+    fn authority_snapshot_requires_newer_refresh_marker() {
+        let mut account = CodexAccount::new(
+            "codex_test".to_string(),
+            "demo@example.com".to_string(),
+            make_codex_tokens(
+                "demo@example.com",
+                "acc-current",
+                "org-current",
+                "old",
+                "rt-old",
+            ),
+        );
+        account.account_id = Some("acc-current".to_string());
+        account.organization_id = Some("org-current".to_string());
+        account.token_updated_at = Some(2000);
+
+        let snapshot = LocalCodexOAuthSnapshot {
+            tokens: make_codex_tokens(
+                "demo@example.com",
+                "acc-current",
+                "org-current",
+                "new",
+                "rt-new",
+            ),
+            email: "demo@example.com".to_string(),
+            subscription_active_until: None,
+            account_id: Some("acc-current".to_string()),
+            organization_id: Some("org-current".to_string()),
+            last_refresh_at: Some(1000),
+        };
+        assert!(!should_accept_authority_snapshot(&account, &snapshot));
+
+        let newer_snapshot = LocalCodexOAuthSnapshot {
+            last_refresh_at: Some(3000),
+            ..snapshot
+        };
+        assert!(should_accept_authority_snapshot(&account, &newer_snapshot));
     }
 
     #[test]

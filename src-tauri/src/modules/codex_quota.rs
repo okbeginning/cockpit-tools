@@ -42,10 +42,25 @@ fn extract_detail_code_from_body(body: &str) -> Option<String> {
 
 fn extract_error_code_from_message(message: &str) -> Option<String> {
     let marker = "[error_code:";
+    if let Some(start) = message.find(marker) {
+        let code_start = start + marker.len();
+        let end = message[code_start..].find(']')?;
+        return Some(message[code_start..code_start + end].to_string());
+    }
+
+    let marker = "error_code=";
     let start = message.find(marker)?;
     let code_start = start + marker.len();
-    let end = message[code_start..].find(']')?;
-    Some(message[code_start..code_start + end].to_string())
+    let tail = &message[code_start..];
+    let end = tail
+        .find(|ch: char| ch == ',' || ch == ']' || ch.is_whitespace())
+        .unwrap_or(tail.len());
+    let code = tail[..end].trim();
+    if code.is_empty() {
+        None
+    } else {
+        Some(code.to_string())
+    }
 }
 
 fn should_force_refresh_token(message: &str) -> bool {

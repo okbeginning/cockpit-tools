@@ -1599,6 +1599,14 @@
     "switch": "Přepnout",
     "switched": "Přepnuto na {{email}}",
     "switchFailed": "Přepnutí se nezdařilo: {{error}}",
+    "authError": {
+      "badge": "Problém s autorizací",
+      "refreshTokenReused": "Autorizace Codexu je neplatná: refresh_token už použil jiný klient nebo instance. Přihlaste se znovu a neobnovujte stejný účet současně z oficiálního Codexu, jiných instancí nebo externích nástrojů.",
+      "refreshTokenExpired": "Autorizace přihlášení do Codexu vypršela a nelze ji automaticky obnovit. Přihlaste se k účtu Codex znovu.",
+      "refreshTokenInvalidated": "Autorizace přihlášení do Codexu byla službou zrušena a nelze ji automaticky obnovit. Přihlaste se k účtu Codex znovu.",
+      "invalidGrant": "Autorizace přihlášení do Codexu je neplatná a nelze ji automaticky obnovit. Přihlaste se k účtu Codex znovu.",
+      "unsupportedCountryRegion": "Aktuální síťová oblast nepodporuje obnovení autorizace Codexu. Autorizační služba OpenAI odmítla tento síťový výstup. Přepněte na podporovanou oblast a zkuste to znovu."
+    },
     "current": "Aktuální",
     "empty": {
       "description": "Klikněte na „Přidat účet“"
@@ -1815,7 +1823,14 @@
       "hourly": "5hodinová kvóta",
       "weeklyReset": "Čas týdenního resetu",
       "hourlyReset": "Čas resetu 5 hodin",
-      "subscriptionExpiry": "Konec předplatného"
+      "subscriptionExpiry": "Konec předplatného",
+      "custom": "Vlastní pořadí",
+      "customModalTitle": "Vlastní pořadí účtů",
+      "customModalDesc": "Přetažením účtů nebo tlačítky nahoru/dolů upravte pořadí zobrazení.",
+      "customDragHandle": "Přetáhnout",
+      "customMoveUp": "Nahoru",
+      "customMoveDown": "Dolů",
+      "customReset": "Reset pořadí"
     },
     "opencodeSwitch": "Přepínač OpenCode",
     "opencodeSwitchDesc": "Synchronizovat přepnutí účtu Codex v OpenCode",
@@ -2281,6 +2296,14 @@
       "filterWithin7d": "7 d ({{count}})",
       "filterWithin30d": "30 d ({{count}})",
       "filterMissing": "Neznámé ({{count}})"
+    },
+    "apiSwitchNotice": {
+      "title": "Po přepnutí na API se relace mohou dočasně skrýt",
+      "message": "Kvůli oficiálnímu chování Codexu se existující relace po přepnutí na API Key / API Service nemusí zobrazit automaticky. Můžete je později obnovit v Správa relací > Opravit viditelnost, nebo spustit jednu rychlou opravu při tomto přepnutí.",
+      "dontAskAgain": "Už nezobrazovat",
+      "switchOnly": "Jen přepnout",
+      "switchAndRepair": "Přepnout a opravit",
+      "repairFailed": "Přepnutí proběhlo, ale rychlá oprava selhala. Zkuste to později ve Správa relací > Opravit viditelnost."
     }
   },
   "githubCopilot": {
@@ -2319,7 +2342,8 @@
       "premium": "Prémiové požadavky"
     },
     "usage": {
-      "included": "Zahrnuto"
+      "included": "Zahrnuto",
+      "usedOfTotal": "{{used}} z {{total}}"
     },
     "injectToVSCode": "Přepnout do VS Code",
     "injectSuccess": "Token byl úspěšně vložen do VS Code. VS Code se spouští.",
@@ -3372,11 +3396,11 @@
       "status": "Stav check-inu",
       "checkedIn": "Zaregistrováno",
       "notCheckedIn": "Nezaregistrováno",
-      "button": {},
+      "button": "Přihlásit",
       "button.loading": "Probíhá check-in...",
       "done": "Hotovo",
       "success": "Check-in úspěšný! Série {{days}} dní",
-      "failure": {},
+      "failure": "Přihlášení selhalo: {{message}}",
       "failure.network": "Chyba sítě, zkuste to prosím později",
       "lastCheckin": "Poslední check-in: {{time}}",
       "streak": "{{days}}denní série",
@@ -3407,9 +3431,9 @@
     "addAccount": "Přidat účet WorkBuddy",
     "flowNotice": {
       "title": "Informace o správě účtů WorkBuddy (kliknutím rozbalíte/sbalíte)",
-      "desc": "Přepínání účtů vyžaduje čtení místního úložiště autentizace WorkBuddy a volání systémových služeb přihlašovacích údajů pro dešifrování/opětovné zašifrování. Data se zpracovávají pouze lokálně.",
-      "permission": "Rozsah oprávnění: čtení databáze autentizace WorkBuddy (state.vscdb), volání systémových schopností pro přihlašovací údaje (macOS Keychain / Windows DPAPI / Linux Secret Service) pro dešifrování/zápis zpět.",
-      "network": "Rozsah sítě: přihlášení OAuth a obnovení tokenu vyžadují síťové požadavky na WorkBuddy; dotazy na kvótu volají billing API. Žádné místní klíče ani přihlašovací údaje se neodesílají."
+      "desc": "Přepnutí účtu zapisuje místní soubor přihlášení podle aktuální struktury oficiálního klienta WorkBuddy; místní import čte stejný soubor. Data se zpracovávají pouze lokálně.",
+      "permission": "Rozsah oprávnění: čtení a zápis přihlašovacího souboru WorkBuddy (CodeBuddyExtension/Data/Public/auth/workbuddy-desktop.info) pro místní import a přepínání účtů; starší state.vscdb se již nečte ani neupravuje.",
+      "network": "Rozsah sítě: přihlášení OAuth a obnovení tokenu vyžadují síťové požadavky na WorkBuddy; dotazy na kvótu volají billing API. Místní přihlašovací soubory ani surové přihlašovací údaje se neodesílají."
     },
     "nickname": "Přezdívka",
     "enterprise": "Podnikový",

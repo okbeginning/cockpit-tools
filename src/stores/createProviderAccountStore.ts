@@ -12,8 +12,11 @@ type ProviderUsage = {
   allowanceResetAt?: number | null;
   remainingCompletions?: number | null;
   remainingChat?: number | null;
+  remainingPremiumRequests?: number | null;
   totalCompletions?: number | null;
   totalChat?: number | null;
+  totalPremiumRequests?: number | null;
+  usedPremiumRequests?: number | null;
 };
 
 type ProviderAccountAugmentation = {
@@ -157,8 +160,11 @@ export function createProviderAccountStore<TAccount extends ProviderAccountAugme
               raw_data: {
                 remainingCompletions: usage.remainingCompletions,
                 remainingChat: usage.remainingChat,
+                remainingPremiumRequests: usage.remainingPremiumRequests,
                 totalCompletions: usage.totalCompletions,
                 totalChat: usage.totalChat,
+                totalPremiumRequests: usage.totalPremiumRequests,
+                usedPremiumRequests: usage.usedPremiumRequests,
                 premiumRequestsUsedPercent: usage.premiumRequestsUsedPercent ?? null,
                 inlineIncluded: usage.inlineIncluded === true,
                 chatIncluded: usage.chatIncluded === true,

@@ -1599,6 +1599,14 @@
     "switch": "Przełącz",
     "switched": "Przełączono na {{email}}",
     "switchFailed": "Nie udało się przełączyć: {{error}}",
+    "authError": {
+      "badge": "Problem z autoryzacją",
+      "refreshTokenReused": "Autoryzacja Codex jest nieprawidłowa: refresh_token został już użyty przez innego klienta lub inną instancję. Zaloguj się ponownie i unikaj jednoczesnego odświeżania tego samego konta z oficjalnego Codexu, innych instancji lub narzędzi zewnętrznych.",
+      "refreshTokenExpired": "Autoryzacja logowania Codex wygasła i nie można jej automatycznie odświeżyć. Zaloguj się ponownie na konto Codex.",
+      "refreshTokenInvalidated": "Autoryzacja logowania Codex została cofnięta przez usługę i nie można jej automatycznie odświeżyć. Zaloguj się ponownie na konto Codex.",
+      "invalidGrant": "Autoryzacja logowania Codex jest nieprawidłowa i nie można jej automatycznie odświeżyć. Zaloguj się ponownie na konto Codex.",
+      "unsupportedCountryRegion": "Bieżący region sieci nie obsługuje odświeżania autoryzacji Codex. Usługa autoryzacji OpenAI odrzuciła to wyjście sieciowe. Przełącz się na obsługiwany region i spróbuj ponownie."
+    },
     "current": "Bieżące",
     "empty": {
       "description": "Kliknij „Dodaj konto”, aby rozpocząć"
@@ -1815,7 +1823,14 @@
       "hourly": "Limit 5-godzinny",
       "weeklyReset": "Czas tygodniowego resetu",
       "hourlyReset": "Czas resetu 5-godzinnego",
-      "subscriptionExpiry": "Koniec subskrypcji"
+      "subscriptionExpiry": "Koniec subskrypcji",
+      "custom": "Własna kolejność",
+      "customModalTitle": "Własna kolejność kont",
+      "customModalDesc": "Przeciągnij konta albo użyj przycisków góra/dół, aby zmienić kolejność.",
+      "customDragHandle": "Przeciągnij",
+      "customMoveUp": "W górę",
+      "customMoveDown": "W dół",
+      "customReset": "Reset kolejności"
     },
     "opencodeSwitch": "Przełącznik OpenCode",
     "opencodeSwitchDesc": "Synchronizuj przełączenie konta Codex w OpenCode",
@@ -2281,6 +2296,14 @@
       "filterWithin7d": "7 dni ({{count}})",
       "filterWithin30d": "30 dni ({{count}})",
       "filterMissing": "Nieznane ({{count}})"
+    },
+    "apiSwitchNotice": {
+      "title": "Sesje mogą być chwilowo ukryte po przełączeniu na API",
+      "message": "Ze względu na oficjalne zachowanie Codexu istniejące sesje mogą nie pojawić się automatycznie po przełączeniu na API Key / API Service. Możesz je później przywrócić w Zarządzanie sesjami > Napraw widoczność albo uruchomić jedną szybką naprawę podczas tego przełączenia.",
+      "dontAskAgain": "Nie pokazuj ponownie",
+      "switchOnly": "Tylko przełącz",
+      "switchAndRepair": "Przełącz i napraw",
+      "repairFailed": "Przełączenie zakończone, ale szybka naprawa się nie powiodła. Możesz spróbować później w Zarządzanie sesjami > Napraw widoczność."
     }
   },
   "githubCopilot": {
@@ -2319,7 +2342,8 @@
       "premium": "Żądania premium"
     },
     "usage": {
-      "included": "Wliczone"
+      "included": "Wliczone",
+      "usedOfTotal": "{{used}} z {{total}}"
     },
     "injectToVSCode": "Przełącz do VS Code",
     "injectSuccess": "Token został pomyślnie wstrzyknięty do VS Code. VS Code jest uruchamiany.",
@@ -3372,11 +3396,11 @@
       "status": "Status zameldowania",
       "checkedIn": "Zameldowano",
       "notCheckedIn": "Brak zameldowania",
-      "button": {},
+      "button": "Zamelduj",
       "button.loading": "Trwa zameldowanie...",
       "done": "Gotowe",
       "success": "Zameldowanie udane! Seria {{days}} dni",
-      "failure": {},
+      "failure": "Zameldowanie nie powiodło się: {{message}}",
       "failure.network": "Błąd sieci, spróbuj ponownie później",
       "lastCheckin": "Ostatnie zameldowanie: {{time}}",
       "streak": "Seria {{days}} dni",
@@ -3407,9 +3431,9 @@
     "addAccount": "Dodaj konto WorkBuddy",
     "flowNotice": {
       "title": "Informacje o zarządzaniu kontami WorkBuddy (kliknij, aby rozwinąć/zwinąć)",
-      "desc": "Przełączanie kont wymaga odczytu lokalnego magazynu uwierzytelniania WorkBuddy oraz wywołania systemowych usług poświadczeń do odszyfrowania/ponownego zaszyfrowania. Dane są przetwarzane wyłącznie lokalnie.",
-      "permission": "Zakres uprawnień: odczyt bazy uwierzytelniania WorkBuddy (state.vscdb), wywołanie systemowych mechanizmów poświadczeń (macOS Keychain / Windows DPAPI / Linux Secret Service) do odszyfrowania i zapisu zwrotnego.",
-      "network": "Zakres sieci: logowanie OAuth i odświeżanie tokenu wymagają żądań do WorkBuddy; zapytania o limity wywołują API rozliczeń. Żadne lokalne klucze ani poświadczenia nie są wysyłane."
+      "desc": "Przełączenie konta zapisuje lokalny plik logowania zgodnie z najnowszym układem oficjalnego klienta WorkBuddy; import lokalny czyta ten sam plik. Dane są przetwarzane wyłącznie lokalnie.",
+      "permission": "Zakres uprawnień: odczyt i zapis pliku logowania WorkBuddy (CodeBuddyExtension/Data/Public/auth/workbuddy-desktop.info) dla importu lokalnego i przełączania kont; starszy state.vscdb nie jest już czytany ani modyfikowany.",
+      "network": "Zakres sieci: logowanie OAuth i odświeżanie tokenu wymagają żądań do WorkBuddy; zapytania o limity wywołują API rozliczeń. Lokalne pliki logowania ani surowe poświadczenia nie są wysyłane."
     },
     "nickname": "Pseudonim",
     "enterprise": "Firmowe",

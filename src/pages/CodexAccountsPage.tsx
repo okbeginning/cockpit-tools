@@ -6,6 +6,7 @@ import {
   useCallback,
   Fragment,
   type ReactElement,
+  type MouseEvent as ReactMouseEvent,
 } from 'react';
 import {
   Plus,
@@ -29,6 +30,9 @@ import {
   List,
   Search,
   ArrowDownWideNarrow,
+  ArrowUp,
+  ArrowDown,
+  GripVertical,
   Clock,
   Calendar,
   Tag,
@@ -107,7 +111,9 @@ import type {
 import type { InstanceProfile } from '../types/instance';
 import {
   CODEX_CODE_REVIEW_QUOTA_VISIBILITY_CHANGED_EVENT,
+  isCodexApiSwitchVisibilityNoticeDismissed,
   isCodexCodeReviewQuotaVisibleByDefault,
+  persistCodexApiSwitchVisibilityNoticeDismissed,
 } from '../utils/codexPreferences';
 import { emitAccountsChanged } from '../utils/accountSyncEvents';
 import { compareCurrentAccountFirst } from '../utils/currentAccountSort';
@@ -193,6 +199,7 @@ function inferCodexAccountProviderMode(account: CodexAccount): CodexApiProviderM
 }
 const CODEX_OVERVIEW_LAYOUT_MODE_KEY = 'agtools.codex.accounts.overview_layout_mode';
 const CODEX_LOCAL_ACCESS_EXPANDED_KEY = 'agtools.codex.local_access_entry_expanded.v1';
+const CODEX_CUSTOM_SORT_ORDER_KEY = 'agtools.codex.accounts.custom_sort_order.v1';
 const DEFAULT_CODEX_API_PROVIDER_ID = CODEX_API_PROVIDER_CUSTOM_ID;
 const CODEX_LOCAL_ACCESS_FALLBACK_PORT = 54140;
 const CODEX_LOCAL_ACCESS_FALLBACK_BASE_URL = `http://127.0.0.1:${CODEX_LOCAL_ACCESS_FALLBACK_PORT}/v1`;
@@ -204,6 +211,34 @@ const GROUP_FILTER_FIELD = 'group_filter';
 const ACTIVE_GROUP_ID_FIELD = 'active_group_id';
 
 type CodexOverviewLayoutMode = 'compact' | 'list' | 'grid';
+type CodexApiSwitchNoticeTarget =
+  | {
+      kind: 'api-key';
+      accountId: string;
+    }
+  | {
+      kind: 'api-service';
+    };
+
+function readCodexCustomSortOrder(): string[] {
+  try {
+    const raw = localStorage.getItem(CODEX_CUSTOM_SORT_ORDER_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+  } catch {
+    return [];
+  }
+}
+
+function writeCodexCustomSortOrder(accountIds: string[]): void {
+  try {
+    localStorage.setItem(CODEX_CUSTOM_SORT_ORDER_KEY, JSON.stringify(accountIds));
+  } catch {
+    // ignore persistence failures
+  }
+}
 
 interface CodexOverviewGeneralConfig {
   codex_local_access_entry_visible?: boolean;
@@ -348,6 +383,16 @@ export function CodexAccountsPage() {
   const [localAccessRiskNoticeAction, setLocalAccessRiskNoticeAction] =
     useState<CodexLocalAccessRiskNoticeAction | null>(null);
   const [localAccessRiskNoticeRemember, setLocalAccessRiskNoticeRemember] = useState(false);
+  const [apiSwitchNoticeTarget, setApiSwitchNoticeTarget] =
+    useState<CodexApiSwitchNoticeTarget | null>(null);
+  const [apiSwitchNoticeDontAskAgain, setApiSwitchNoticeDontAskAgain] = useState(false);
+  const [apiSwitchNoticeSubmitting, setApiSwitchNoticeSubmitting] = useState(false);
+  const [apiSwitchNoticeRepairFailed, setApiSwitchNoticeRepairFailed] = useState(false);
+  const {
+    message: apiSwitchNoticeError,
+    scrollKey: apiSwitchNoticeErrorScrollKey,
+    set: setApiSwitchNoticeError,
+  } = useModalErrorState();
   const [localAccessCopiedField, setLocalAccessCopiedField] = useState<'baseUrl' | 'apiKey' | null>(null);
   const [localAccessKeyVisible, setLocalAccessKeyVisible] = useState(false);
   const [localAccessEntryVisible, setLocalAccessEntryVisible] = useState(true);
@@ -1069,6 +1114,13 @@ export function CodexAccountsPage() {
   const [showCodeReviewQuota, setShowCodeReviewQuota] = useState<boolean>(
     isCodexCodeReviewQuotaVisibleByDefault,
   );
+  const [customSortOrder, setCustomSortOrder] = useState<string[]>(readCodexCustomSortOrder);
+  const [showCustomSortModal, setShowCustomSortModal] = useState(false);
+  const [draggedCustomSortAccountId, setDraggedCustomSortAccountId] = useState<string | null>(null);
+  const [customSortDropTargetId, setCustomSortDropTargetId] = useState<string | null>(null);
+  const repairSessionVisibilityAcrossInstances = useCodexInstanceStore(
+    (state) => state.repairSessionVisibilityAcrossInstances,
+  );
 
   const showAddModalRef = useRef(showAddModal);
   const addTabRef = useRef(addTab);
@@ -1210,6 +1262,45 @@ export function CodexAccountsPage() {
       return changed ? next : prev;
     });
   }, [accounts]);
+
+  useEffect(() => {
+    const accountIds = accounts.map((account) => account.id);
+    const accountIdSet = new Set(accountIds);
+    setCustomSortOrder((prev) => {
+      const next = prev.filter((accountId) => accountIdSet.has(accountId));
+      const seen = new Set(next);
+      for (const accountId of accountIds) {
+        if (!seen.has(accountId)) {
+          next.push(accountId);
+          seen.add(accountId);
+        }
+      }
+      const unchanged =
+        next.length === prev.length && next.every((accountId, index) => accountId === prev[index]);
+      return unchanged ? prev : next;
+    });
+  }, [accounts]);
+
+  useEffect(() => {
+    writeCodexCustomSortOrder(customSortOrder);
+  }, [customSortOrder]);
+
+  useEffect(() => {
+    if (!showCustomSortModal || !draggedCustomSortAccountId) return;
+    const handleMouseUp = () => {
+      setDraggedCustomSortAccountId(null);
+      setCustomSortDropTargetId(null);
+    };
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => window.removeEventListener('mouseup', handleMouseUp);
+  }, [showCustomSortModal, draggedCustomSortAccountId]);
+
+  useEffect(() => {
+    if (!showCustomSortModal) {
+      setDraggedCustomSortAccountId(null);
+      setCustomSortDropTargetId(null);
+    }
+  }, [showCustomSortModal]);
 
   useEffect(() => {
     void reloadManagedProviders();
@@ -1616,16 +1707,110 @@ export function CodexAccountsPage() {
 
   // ─── Codex-specific: Switch / Import ─────────────────────────────────
 
+  const shouldShowApiSwitchVisibilityNotice = useCallback(() => {
+    return Boolean(
+      currentAccount &&
+      !isCodexApiKeyAccount(currentAccount) &&
+      !isCodexApiSwitchVisibilityNoticeDismissed(),
+    );
+  }, [currentAccount]);
+
+  const closeApiSwitchVisibilityNotice = useCallback(() => {
+    if (apiSwitchNoticeSubmitting) return;
+    setApiSwitchNoticeTarget(null);
+    setApiSwitchNoticeDontAskAgain(false);
+    setApiSwitchNoticeRepairFailed(false);
+    setApiSwitchNoticeError(null);
+  }, [apiSwitchNoticeSubmitting, setApiSwitchNoticeError]);
+
+  const openApiSwitchVisibilityNotice = useCallback((target: CodexApiSwitchNoticeTarget) => {
+    setApiSwitchNoticeTarget(target);
+    setApiSwitchNoticeDontAskAgain(false);
+    setApiSwitchNoticeRepairFailed(false);
+    setApiSwitchNoticeError(null);
+  }, [setApiSwitchNoticeError]);
+
+  const formatCodexAuthFailureMessage = useCallback(
+    (rawError: unknown) => {
+      const raw = String(rawError).replace(/^Error:\s*/, '').trim();
+      const lower = raw.toLowerCase();
+      if (lower.includes('unsupported_country_region_territory') || raw.includes('当前网络地区不支持刷新 Codex 授权')) {
+        return t(
+          'codex.authError.unsupportedCountryRegion',
+          '当前网络地区不支持刷新 Codex 授权。OpenAI 授权服务拒绝了当前网络出口的刷新请求，请切换到支持的网络地区后重试。',
+        );
+      }
+      if (lower.includes('refresh_token_reused') || raw.includes('refresh_token 已被其它客户端或实例使用过')) {
+        return t(
+          'codex.authError.refreshTokenReused',
+          'Codex 授权已失效：refresh_token 已被其它客户端或实例使用过。请重新登录，并避免官方 Codex、其它实例或外部工具同时刷新同一账号。',
+        );
+      }
+      if (lower.includes('refresh_token_expired') || raw.includes('Codex 登录授权已过期')) {
+        return t(
+          'codex.authError.refreshTokenExpired',
+          'Codex 登录授权已过期，无法自动刷新。请重新登录 Codex 账号。',
+        );
+      }
+      if (
+        lower.includes('refresh_token_invalidated') ||
+        lower.includes('token_invalidated') ||
+        raw.includes('Codex 登录授权已被服务端撤销')
+      ) {
+        return t(
+          'codex.authError.refreshTokenInvalidated',
+          'Codex 登录授权已被服务端撤销，无法自动刷新。请重新登录 Codex 账号。',
+        );
+      }
+      if (
+        lower.includes('invalid_grant') ||
+        lower.includes('invalid refresh token') ||
+        raw.includes('缺少 refresh_token') ||
+        raw.includes('无 refresh_token')
+      ) {
+        return t(
+          'codex.authError.invalidGrant',
+          'Codex 登录授权无效，无法自动刷新。请重新登录 Codex 账号。',
+        );
+      }
+      return raw;
+    },
+    [t],
+  );
+
+  const executeCodexAccountSwitch = useCallback(
+    async (accountId: string, options?: { showSuccessMessage?: boolean }) => {
+      const showSuccessMessage = options?.showSuccessMessage ?? true;
+      setMessage(null);
+      setSwitching(accountId);
+      try {
+        const account = await switchAccount(accountId);
+        if (showSuccessMessage) {
+          setMessage({ text: t('codex.switched', { email: maskAccountText(account.email) }) });
+        }
+        return account;
+      } finally {
+        setSwitching(null);
+      }
+    },
+    [maskAccountText, setMessage, switchAccount, t],
+  );
+
   const handleSwitch = async (accountId: string) => {
-    setMessage(null);
-    setSwitching(accountId);
-    try {
-      const account = await switchAccount(accountId);
-      setMessage({ text: t('codex.switched', { email: maskAccountText(account.email) }) });
-    } catch (e) {
-      setMessage({ text: t('codex.switchFailed', { error: String(e) }), tone: 'error' });
+    const targetAccount = accounts.find((account) => account.id === accountId);
+    if (targetAccount && isCodexApiKeyAccount(targetAccount) && shouldShowApiSwitchVisibilityNotice()) {
+      openApiSwitchVisibilityNotice({
+        kind: 'api-key',
+        accountId,
+      });
+      return;
     }
-    setSwitching(null);
+
+    try {
+      await executeCodexAccountSwitch(accountId);
+    } catch (e) {
+      setMessage({ text: t('codex.switchFailed', { error: formatCodexAuthFailureMessage(e) }), tone: 'error' });
+    }
   };
 
   const resolveCodexCliInstanceForAccount = async (
@@ -2320,13 +2505,16 @@ export function CodexAccountsPage() {
         ? normalizedRawMessage.slice(requestErrorIndex).trim()
         : normalizedRawMessage;
     const statusCode = rawMessage.match(/API 返回错误\s+(\d{3})/i)?.[1] || rawMessage.match(/status[=: ]+(\d{3})/i)?.[1] || '';
-    const errorCode = quotaError.code || rawMessage.match(/\[error_code:([^\]]+)\]/)?.[1] || '';
-    const displayText = errorCode
+    const errorCode = quotaError.code || rawMessage.match(/\[error_code:([^\]]+)\]/)?.[1] || rawMessage.match(/error_code[=:]\s*([^,\]\s]+)/i)?.[1] || '';
+    const authFailureText = formatCodexAuthFailureMessage(normalizedRawMessage);
+    const displayText = authFailureText !== normalizedRawMessage
+      ? authFailureText
+      : errorCode
       || (requestErrorIndex >= 0
         ? t('codex.quotaError.requestFailedManualRetry', { error: requestErrorMessage })
         : normalizedRawMessage);
     return { statusCode, errorCode, displayText, rawMessage };
-  }, [t]);
+  }, [formatCodexAuthFailureMessage, t]);
 
   const shouldOfferReauthorizeAction = useCallback(
     (quotaErrorMeta: { statusCode: string; errorCode: string; rawMessage: string }) => {
@@ -2334,16 +2522,31 @@ export function CodexAccountsPage() {
       const errorCode = quotaErrorMeta.errorCode.trim().toLowerCase();
       const rawMessage = quotaErrorMeta.rawMessage.trim().toLowerCase();
       if (!statusCode && !errorCode && !rawMessage) return false;
+      if (
+        errorCode === 'unsupported_country_region_territory'
+        || rawMessage.includes('unsupported_country_region_territory')
+        || rawMessage.includes('当前网络地区不支持刷新 codex 授权')
+      ) {
+        return false;
+      }
 
       return statusCode === '401'
+        || errorCode === 'refresh_token_reused'
+        || errorCode === 'refresh_token_expired'
+        || errorCode === 'refresh_token_invalidated'
         || errorCode === 'token_invalidated'
         || errorCode === 'invalid_grant'
         || errorCode === 'invalid_token'
+        || rawMessage.includes('refresh_token_reused')
+        || rawMessage.includes('refresh_token_expired')
+        || rawMessage.includes('refresh_token_invalidated')
         || rawMessage.includes('token_invalidated')
+        || rawMessage.includes('refresh_token 已被其它客户端或实例使用过')
         || rawMessage.includes('your authentication token has been invalidated')
         || rawMessage.includes('401 unauthorized')
         || rawMessage.includes('invalid_grant')
         || rawMessage.includes('token 已过期且无 refresh_token')
+        || rawMessage.includes('缺少 refresh_token')
         || rawMessage.includes('token 已过期且刷新失败')
         || rawMessage.includes('刷新 token 失败');
     },
@@ -2961,7 +3164,7 @@ export function CodexAccountsPage() {
     }
   }, [localAccessCollection, resolveLocalAccessBaseUrl, t]);
 
-  const handleActivateLocalAccess = useCallback(async () => {
+  const handleActivateLocalAccess = useCallback(async (options?: { showSuccessMessage?: boolean }) => {
     if (!localAccessCollection) {
       throw new Error(t('codex.localAccess.testUnavailable', '当前 API 服务地址不可用'));
     }
@@ -2987,9 +3190,11 @@ export function CodexAccountsPage() {
       const nextState = await codexLocalAccessService.activateCodexLocalAccess();
       setLocalAccessState(nextState);
       await fetchCurrentAccount();
-      setMessage({
-        text: t('codex.localAccess.activateSuccess', '已切换到 API 服务'),
-      });
+      if (options?.showSuccessMessage ?? true) {
+        setMessage({
+          text: t('codex.localAccess.activateSuccess', '已切换到 API 服务'),
+        });
+      }
       return nextState;
     } catch (error) {
       throw new Error(String(error).replace(/^Error:\s*/, ''));
@@ -2997,6 +3202,80 @@ export function CodexAccountsPage() {
       setLocalAccessStarting(false);
     }
   }, [fetchCurrentAccount, localAccessCollection, requestLocalAccessRiskNotice, setMessage, t]);
+
+  const handleSubmitApiSwitchNotice = useCallback(
+    async (repairAfterSwitch: boolean) => {
+      if (!apiSwitchNoticeTarget || apiSwitchNoticeSubmitting) return;
+
+      setApiSwitchNoticeError(null);
+      setApiSwitchNoticeRepairFailed(false);
+      if (apiSwitchNoticeDontAskAgain) {
+        persistCodexApiSwitchVisibilityNoticeDismissed(true);
+      }
+
+      setApiSwitchNoticeSubmitting(true);
+      try {
+        if (apiSwitchNoticeTarget.kind === 'api-key') {
+          const account = await executeCodexAccountSwitch(apiSwitchNoticeTarget.accountId, {
+            showSuccessMessage: false,
+          });
+          if (!repairAfterSwitch) {
+            setMessage({ text: t('codex.switched', { email: maskAccountText(account.email) }) });
+          }
+        } else {
+          const state = await handleActivateLocalAccess({ showSuccessMessage: false });
+          if (!state) {
+            return;
+          }
+          if (!repairAfterSwitch) {
+            setMessage({ text: t('codex.localAccess.activateSuccess', '已切换到 API 服务') });
+          }
+        }
+
+        if (repairAfterSwitch) {
+          try {
+            const summary = await repairSessionVisibilityAcrossInstances();
+            setMessage({ text: summary.message });
+          } catch (error) {
+            setApiSwitchNoticeRepairFailed(true);
+            setApiSwitchNoticeError(
+              t(
+                'codex.apiSwitchNotice.repairFailed',
+                '已完成切换，但快捷修复失败。你仍可稍后在「会话管理」中使用「修复可见性」重试。',
+              ),
+            );
+            return;
+          }
+        }
+
+        setApiSwitchNoticeTarget(null);
+        setApiSwitchNoticeDontAskAgain(false);
+        setApiSwitchNoticeRepairFailed(false);
+        setApiSwitchNoticeError(null);
+      } catch (error) {
+        setApiSwitchNoticeError(
+          t('codex.switchFailed', {
+            error: formatCodexAuthFailureMessage(error),
+          }),
+        );
+      } finally {
+        setApiSwitchNoticeSubmitting(false);
+      }
+    },
+    [
+      apiSwitchNoticeDontAskAgain,
+      apiSwitchNoticeSubmitting,
+      apiSwitchNoticeTarget,
+      executeCodexAccountSwitch,
+      formatCodexAuthFailureMessage,
+      handleActivateLocalAccess,
+      maskAccountText,
+      repairSessionVisibilityAcrossInstances,
+      setApiSwitchNoticeError,
+      setMessage,
+      t,
+    ],
+  );
 
   const handleQuickToggleLocalAccessEnabled = useCallback(async () => {
     try {
@@ -3013,6 +3292,13 @@ export function CodexAccountsPage() {
   }, [handleToggleLocalAccessEnabled, setMessage, t]);
 
   const handleQuickActivateLocalAccess = useCallback(async () => {
+    if (shouldShowApiSwitchVisibilityNotice()) {
+      openApiSwitchVisibilityNotice({
+        kind: 'api-service',
+      });
+      return;
+    }
+
     try {
       await handleActivateLocalAccess();
     } catch (error) {
@@ -3024,7 +3310,7 @@ export function CodexAccountsPage() {
         tone: 'error',
       });
     }
-  }, [handleActivateLocalAccess, setMessage, t]);
+  }, [handleActivateLocalAccess, openApiSwitchVisibilityNotice, setMessage, shouldShowApiSwitchVisibilityNotice, t]);
 
   const handleQuickRefreshLocalAccessQuota = useCallback(async () => {
     if (!localAccessCollection) return;
@@ -3086,7 +3372,24 @@ export function CodexAccountsPage() {
   }, [accounts, fetchAccounts, fetchCurrentAccount, localAccessCollection, refreshQuota, setMessage, t]);
 
   // ─── Filtering & Sorting ────────────────────────────────────────────
+  const customSortOrderIndex = useMemo(() => {
+    const map = new Map<string, number>();
+    customSortOrder.forEach((accountId, index) => {
+      map.set(accountId, index);
+    });
+    return map;
+  }, [customSortOrder]);
+
   const compareAccountsBySort = useCallback((a: CodexAccount, b: CodexAccount) => {
+    if (sortBy === 'custom') {
+      const aIndex = customSortOrderIndex.get(a.id) ?? Number.MAX_SAFE_INTEGER;
+      const bIndex = customSortOrderIndex.get(b.id) ?? Number.MAX_SAFE_INTEGER;
+      if (aIndex !== bIndex) {
+        return aIndex - bIndex;
+      }
+      return b.created_at - a.created_at;
+    }
+
     const currentFirstDiff = compareCurrentAccountFirst(a.id, b.id, currentAccount?.id);
     if (currentFirstDiff !== 0) {
       return currentFirstDiff;
@@ -3115,7 +3418,7 @@ export function CodexAccountsPage() {
     const aV = sortBy === 'weekly' ? a.quota?.weekly_percentage ?? -1 : a.quota?.hourly_percentage ?? -1;
     const bV = sortBy === 'weekly' ? b.quota?.weekly_percentage ?? -1 : b.quota?.hourly_percentage ?? -1;
     return sortDirection === 'desc' ? bV - aV : aV - bV;
-  }, [currentAccount?.id, resolveSubscriptionPresentation, sortBy, sortDirection]);
+  }, [currentAccount?.id, customSortOrderIndex, resolveSubscriptionPresentation, sortBy, sortDirection]);
 
   const sortedAccountsForInstances = useMemo(
     () => [...accounts].sort(compareAccountsBySort),
@@ -3181,6 +3484,88 @@ export function CodexAccountsPage() {
   });
   const paginatedAccounts = pagination.pageItems;
   const paginatedIds = useMemo(() => paginatedAccounts.map((account) => account.id), [paginatedAccounts]);
+  const isCustomSortActive = sortBy === 'custom';
+  const customSortAccounts = useMemo(() => {
+    const accountMap = new Map(accounts.map((account) => [account.id, account]));
+    const result: CodexAccount[] = [];
+    const seen = new Set<string>();
+
+    customSortOrder.forEach((accountId) => {
+      const account = accountMap.get(accountId);
+      if (!account || seen.has(accountId)) return;
+      result.push(account);
+      seen.add(accountId);
+    });
+
+    accounts.forEach((account) => {
+      if (seen.has(account.id)) return;
+      result.push(account);
+      seen.add(account.id);
+    });
+
+    return result;
+  }, [accounts, customSortOrder]);
+  const customSortAccountIds = useMemo(
+    () => customSortAccounts.map((account) => account.id),
+    [customSortAccounts],
+  );
+  const moveCustomSortAccount = useCallback(
+    (accountId: string, direction: 'up' | 'down') => {
+      const currentIndex = customSortAccountIds.indexOf(accountId);
+      if (currentIndex < 0) return;
+      const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+      if (targetIndex < 0 || targetIndex >= customSortAccountIds.length) return;
+      const next = [...customSortAccountIds];
+      const [moved] = next.splice(currentIndex, 1);
+      next.splice(targetIndex, 0, moved);
+      setCustomSortOrder(next);
+    },
+    [customSortAccountIds],
+  );
+  const stopCustomSortDragging = useCallback(() => {
+    setDraggedCustomSortAccountId(null);
+    setCustomSortDropTargetId(null);
+  }, []);
+  const handleCustomSortDragStart = useCallback(
+    (event: ReactMouseEvent, accountId: string) => {
+      if (event.button !== 0) return;
+      event.preventDefault();
+      event.stopPropagation();
+      setDraggedCustomSortAccountId(accountId);
+      setCustomSortDropTargetId(null);
+    },
+    [],
+  );
+  const handleCustomSortDragMove = useCallback(
+    (targetAccountId: string) => {
+      if (!draggedCustomSortAccountId) return;
+      if (draggedCustomSortAccountId === targetAccountId) {
+        setCustomSortDropTargetId(null);
+        return;
+      }
+      const fromIndex = customSortAccountIds.indexOf(draggedCustomSortAccountId);
+      const toIndex = customSortAccountIds.indexOf(targetAccountId);
+      if (fromIndex < 0 || toIndex < 0) return;
+      setCustomSortDropTargetId(targetAccountId);
+      const next = [...customSortAccountIds];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+      setCustomSortOrder(next);
+    },
+    [customSortAccountIds, draggedCustomSortAccountId],
+  );
+  const resetCustomSortOrder = useCallback(() => {
+    setCustomSortOrder(accounts.map((account) => account.id));
+  }, [accounts]);
+  const handleSortByChange = useCallback(
+    (value: string) => {
+      setSortBy(value);
+      if (value === 'custom') {
+        setShowCustomSortModal(true);
+      }
+    },
+    [setSortBy],
+  );
   const isAllPaginatedSelected = useMemo(
     () => isEveryIdSelected(selected, paginatedIds),
     [paginatedIds, selected],
@@ -3337,10 +3722,19 @@ export function CodexAccountsPage() {
         : showCodeReviewQuota
           ? presentation.quotaItems
           : presentation.quotaItems.filter((item) => item.key !== 'code_review');
+      const reauthErrorMeta = resolveQuotaErrorMeta(
+        account.requires_reauth && account.reauth_reason
+          ? { message: account.reauth_reason, timestamp: account.token_updated_at || account.last_used }
+          : undefined,
+      );
       const quotaErrorMeta = resolveQuotaErrorMeta(account.quota_error);
-      const hasQuotaError = Boolean(quotaErrorMeta.rawMessage);
+      const accountIssueMeta = reauthErrorMeta.rawMessage ? reauthErrorMeta : quotaErrorMeta;
+      const hasQuotaError = Boolean(accountIssueMeta.rawMessage);
+      const accountIssueBadge = reauthErrorMeta.rawMessage
+        ? t('codex.authError.badge', '授权异常')
+        : accountIssueMeta.statusCode || t('codex.quotaError.badge', '配额异常');
       const showReauthorizeAction =
-        !isApiKeyAccount && hasQuotaError && shouldOfferReauthorizeAction(quotaErrorMeta);
+        !isApiKeyAccount && hasQuotaError && shouldOfferReauthorizeAction(accountIssueMeta);
       const accountIdText =
         meta.chatgptAccountId && meta.chatgptAccountId !== t('common.none', '暂无')
           ? meta.chatgptAccountId
@@ -3389,7 +3783,7 @@ export function CodexAccountsPage() {
               </span>
             )}
             {isCurrent && <span className="current-tag">{t('codex.current', '当前')}</span>}
-            {hasQuotaError && (<span className="codex-status-pill quota-error" title={quotaErrorMeta.rawMessage}><CircleAlert size={12} />{quotaErrorMeta.statusCode || t('codex.quotaError.badge', '配额异常')}</span>)}
+            {hasQuotaError && (<span className="codex-status-pill quota-error" title={accountIssueMeta.rawMessage}><CircleAlert size={12} />{accountIssueBadge}</span>)}
             <span className={`tier-badge ${planClass}`}>{presentation.planLabel}</span>
           </div>
           {meta.accountContextText && (
@@ -3445,9 +3839,9 @@ export function CodexAccountsPage() {
             ) : (
               <>
                 {hasQuotaError && (
-                  <div className="quota-error-inline" title={quotaErrorMeta.rawMessage}>
+                  <div className="quota-error-inline" title={accountIssueMeta.rawMessage}>
                     <CircleAlert size={14} />
-                    <span>{quotaErrorMeta.displayText}</span>
+                    <span>{accountIssueMeta.displayText}</span>
                     {showReauthorizeAction && (
                       <button
                         className="btn btn-sm btn-outline"
@@ -3980,10 +4374,19 @@ export function CodexAccountsPage() {
         : showCodeReviewQuota
           ? presentation.quotaItems
           : presentation.quotaItems.filter((item) => item.key !== 'code_review');
+      const reauthErrorMeta = resolveQuotaErrorMeta(
+        account.requires_reauth && account.reauth_reason
+          ? { message: account.reauth_reason, timestamp: account.token_updated_at || account.last_used }
+          : undefined,
+      );
       const quotaErrorMeta = resolveQuotaErrorMeta(account.quota_error);
-      const hasQuotaError = Boolean(quotaErrorMeta.rawMessage);
+      const accountIssueMeta = reauthErrorMeta.rawMessage ? reauthErrorMeta : quotaErrorMeta;
+      const hasQuotaError = Boolean(accountIssueMeta.rawMessage);
+      const accountIssueBadge = reauthErrorMeta.rawMessage
+        ? t('codex.authError.badge', '授权异常')
+        : accountIssueMeta.statusCode || t('codex.quotaError.badge', '配额异常');
       const showReauthorizeAction =
-        !isApiKeyAccount && hasQuotaError && shouldOfferReauthorizeAction(quotaErrorMeta);
+        !isApiKeyAccount && hasQuotaError && shouldOfferReauthorizeAction(accountIssueMeta);
       const accountIdText =
         meta.chatgptAccountId && meta.chatgptAccountId !== t('common.none', '暂无')
           ? meta.chatgptAccountId
@@ -4071,7 +4474,7 @@ export function CodexAccountsPage() {
                 </div>
               </>
             )}
-            {hasQuotaError && (<div className="account-sub-line"><span className="codex-status-pill quota-error" title={quotaErrorMeta.rawMessage}><CircleAlert size={12} />{quotaErrorMeta.statusCode || t('codex.quotaError.badge', '配额异常')}</span></div>)}</div></td>
+            {hasQuotaError && (<div className="account-sub-line"><span className="codex-status-pill quota-error" title={accountIssueMeta.rawMessage}><CircleAlert size={12} />{accountIssueBadge}</span></div>)}</div></td>
           <td><span className={`tier-badge ${planClass}`}>{presentation.planLabel}</span></td>
           <td>
             {isApiKeyAccount ? (
@@ -4107,9 +4510,9 @@ export function CodexAccountsPage() {
                   )}
                 </div>
                 {hasQuotaError && (
-                  <div className="quota-error-inline table" title={quotaErrorMeta.rawMessage}>
+                  <div className="quota-error-inline table" title={accountIssueMeta.rawMessage}>
                     <CircleAlert size={12} />
-                    <span>{quotaErrorMeta.displayText}</span>
+                    <span>{accountIssueMeta.displayText}</span>
                     {showReauthorizeAction && (
                       <button
                         className="btn btn-sm btn-outline"
@@ -4348,14 +4751,17 @@ export function CodexAccountsPage() {
                 { value: 'weekly_reset', label: t('codex.sort.weeklyReset', '按周配额重置时间') },
                 { value: 'hourly_reset', label: t('codex.sort.hourlyReset', '按5小时配额重置时间') },
                 { value: 'subscription_expiry', label: t('codex.sort.subscriptionExpiry', '按订阅有效期') },
+                { value: 'custom', label: t('codex.sort.custom', '自定义顺序') },
               ]}
               ariaLabel={t('common.shared.sortLabel', '排序')}
               icon={<ArrowDownWideNarrow size={14} />}
-              onChange={setSortBy}
+              onChange={handleSortByChange}
             />
-            <button className="sort-direction-btn" onClick={() => setSortDirection((prev) => (prev === 'desc' ? 'asc' : 'desc'))}
-              title={sortDirection === 'desc' ? t('common.shared.sort.descTooltip', '当前：降序，点击切换为升序') : t('common.shared.sort.ascTooltip', '当前：升序，点击切换为降序')}
-              aria-label={t('common.shared.sort.toggleDirection', '切换排序方向')}>{sortDirection === 'desc' ? '⬇' : '⬆'}</button>
+            {!isCustomSortActive && (
+              <button className="sort-direction-btn" onClick={() => setSortDirection((prev) => (prev === 'desc' ? 'asc' : 'desc'))}
+                title={sortDirection === 'desc' ? t('common.shared.sort.descTooltip', '当前：降序，点击切换为升序') : t('common.shared.sort.ascTooltip', '当前：升序，点击切换为降序')}
+                aria-label={t('common.shared.sort.toggleDirection', '切换排序方向')}>{sortDirection === 'desc' ? '⬇' : '⬆'}</button>
+            )}
           </div>
           <div className="toolbar-right">
             <button className="btn btn-primary icon-only" onClick={() => openAddModal('oauth')} title={t('common.shared.addAccount', '添加账号')}><Plus size={14} /></button>
@@ -5098,6 +5504,146 @@ export function CodexAccountsPage() {
           </div>
         )}
 
+        {showCustomSortModal && (
+          <div className="modal-overlay" onClick={() => setShowCustomSortModal(false)}>
+            <div
+              className="modal codex-custom-sort-modal"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="modal-header">
+                <div>
+                  <h2>{t('codex.sort.customModalTitle', '自定义账号排序')}</h2>
+                  <p className="codex-custom-sort-modal-desc">
+                    {t('codex.sort.customModalDesc', '拖动账号或使用上下按钮调整展示顺序。')}
+                  </p>
+                </div>
+                <button
+                  className="modal-close"
+                  onClick={() => setShowCustomSortModal(false)}
+                  aria-label={t('common.close', '关闭')}
+                >
+                  <X />
+                </button>
+              </div>
+              <div className="modal-body">
+                <div
+                  className={`codex-custom-sort-list ${
+                    draggedCustomSortAccountId ? 'is-sorting' : ''
+                  }`}
+                  onMouseUp={stopCustomSortDragging}
+                  onMouseLeave={stopCustomSortDragging}
+                >
+                  {customSortAccounts.map((account, index) => {
+                    const presentation = resolvePresentation(account);
+                    const isCurrent = currentAccount?.id === account.id;
+                    const quotaItems = isCodexApiKeyAccount(account)
+                      ? []
+                      : presentation.quotaItems
+                        .filter((item) => item.key !== 'code_review')
+                        .slice(0, 2);
+                    const rowClass = [
+                      'codex-custom-sort-row',
+                      draggedCustomSortAccountId === account.id ? 'is-dragging' : '',
+                      draggedCustomSortAccountId && draggedCustomSortAccountId !== account.id
+                        ? 'is-drop-candidate'
+                        : '',
+                      draggedCustomSortAccountId &&
+                      draggedCustomSortAccountId !== account.id &&
+                      customSortDropTargetId === account.id
+                        ? 'is-drop-target'
+                        : '',
+                    ]
+                      .join(' ')
+                      .trim();
+
+                    return (
+                      <div
+                        key={account.id}
+                        className={rowClass}
+                        onMouseEnter={() => handleCustomSortDragMove(account.id)}
+                      >
+                        <div className="codex-custom-sort-row-main">
+                          <button
+                            type="button"
+                            className="codex-custom-sort-drag-handle"
+                            onMouseDown={(event) => handleCustomSortDragStart(event, account.id)}
+                            title={t('codex.sort.customDragHandle', '拖拽排序')}
+                            aria-label={t('codex.sort.customDragHandle', '拖拽排序')}
+                          >
+                            <GripVertical size={16} />
+                          </button>
+                          <span className="codex-custom-sort-index">{index + 1}</span>
+                          <div className="codex-custom-sort-account">
+                            <div className="codex-custom-sort-account-title">
+                              <span title={maskAccountText(presentation.displayName)}>
+                                {maskAccountText(presentation.displayName)}
+                              </span>
+                              {isCurrent && (
+                                <span className="mini-tag current">{t('codex.current', '当前')}</span>
+                              )}
+                              <span className={`tier-badge ${presentation.planClass || 'unknown'}`}>
+                                {presentation.planLabel}
+                              </span>
+                            </div>
+                            <div className="codex-custom-sort-quota-line">
+                              {quotaItems.length > 0 ? (
+                                quotaItems.map((item) => (
+                                  <span
+                                    key={`${account.id}-${item.key}`}
+                                    className="codex-custom-sort-quota"
+                                  >
+                                    <span>{item.label}</span>
+                                    <strong className={item.quotaClass}>{item.valueText}</strong>
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="codex-custom-sort-quota-empty">
+                                  {t('common.shared.quota.noData', '暂无配额数据')}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="codex-custom-sort-row-actions">
+                          <button
+                            type="button"
+                            className="folder-icon-btn"
+                            onClick={() => moveCustomSortAccount(account.id, 'up')}
+                            disabled={index === 0}
+                            title={t('codex.sort.customMoveUp', '上移')}
+                            aria-label={t('codex.sort.customMoveUp', '上移')}
+                          >
+                            <ArrowUp size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            className="folder-icon-btn"
+                            onClick={() => moveCustomSortAccount(account.id, 'down')}
+                            disabled={index === customSortAccounts.length - 1}
+                            title={t('codex.sort.customMoveDown', '下移')}
+                            aria-label={t('codex.sort.customMoveDown', '下移')}
+                          >
+                            <ArrowDown size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-secondary" onClick={resetCustomSortOrder}>
+                  <RotateCw size={14} />
+                  {t('codex.sort.customReset', '重置自定义顺序')}
+                </button>
+                <button className="btn btn-primary" onClick={() => setShowCustomSortModal(false)}>
+                  {t('common.confirm', '确认')}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <ExportJsonModal
           isOpen={showExportModal}
           title={`${t('common.shared.export.title', '导出')} JSON`}
@@ -5247,6 +5793,103 @@ export function CodexAccountsPage() {
                 >
                   {getCodexLocalAccessRiskNoticeConfirmLabel(localAccessRiskNoticeAction, t)}
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {apiSwitchNoticeTarget && (
+          <div
+            className="modal-overlay codex-local-access-hide-confirm-overlay"
+            onClick={closeApiSwitchVisibilityNotice}
+          >
+            <div
+              className="modal codex-local-access-hide-confirm-modal codex-api-switch-notice-modal"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="modal-header">
+                <h2>
+                  {t(
+                    'codex.apiSwitchNotice.title',
+                    '切换到 API 后，会话可能暂时不可见',
+                  )}
+                </h2>
+                <button
+                  className="modal-close"
+                  onClick={closeApiSwitchVisibilityNotice}
+                  aria-label={t('common.close', '关闭')}
+                  disabled={apiSwitchNoticeSubmitting}
+                >
+                  <X />
+                </button>
+              </div>
+              <div className="modal-body">
+                <ModalErrorMessage
+                  message={apiSwitchNoticeError}
+                  scrollKey={apiSwitchNoticeErrorScrollKey}
+                />
+                {!apiSwitchNoticeRepairFailed && (
+                  <>
+                    <p className="codex-local-access-hide-confirm-desc">
+                      {t(
+                        'codex.apiSwitchNotice.message',
+                        '由于 Codex 官方机制，切换到 API Key / API 服务后，原有会话可能不会自动显示。你可以在切换后通过「会话管理」里的「修复可见性」恢复，也可以在本次切换时快速修复一次。',
+                      )}
+                    </p>
+                    <div className="codex-local-access-hide-confirm-points codex-api-switch-notice-options">
+                      <label className="codex-local-access-risk-notice-remember">
+                        <input
+                          type="checkbox"
+                          checked={apiSwitchNoticeDontAskAgain}
+                          onChange={(event) => {
+                            setApiSwitchNoticeDontAskAgain(event.target.checked);
+                          }}
+                          disabled={apiSwitchNoticeSubmitting}
+                        />
+                        <span>{t('codex.apiSwitchNotice.dontAskAgain', '不再提示')}</span>
+                      </label>
+                    </div>
+                  </>
+                )}
+              </div>
+              <div className="modal-footer codex-api-switch-notice-footer">
+                {apiSwitchNoticeRepairFailed ? (
+                  <button
+                    className="btn btn-primary"
+                    onClick={closeApiSwitchVisibilityNotice}
+                    disabled={apiSwitchNoticeSubmitting}
+                  >
+                    {t('common.close', '关闭')}
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      className="btn btn-secondary"
+                      onClick={closeApiSwitchVisibilityNotice}
+                      disabled={apiSwitchNoticeSubmitting}
+                    >
+                      {t('common.cancel', '取消')}
+                    </button>
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => void handleSubmitApiSwitchNotice(false)}
+                      disabled={apiSwitchNoticeSubmitting}
+                    >
+                      {apiSwitchNoticeSubmitting
+                        ? t('common.processing', '处理中...')
+                        : t('codex.apiSwitchNotice.switchOnly', '仅切换')}
+                    </button>
+                    <button
+                      className="btn btn-primary"
+                      onClick={() => void handleSubmitApiSwitchNotice(true)}
+                      disabled={apiSwitchNoticeSubmitting}
+                    >
+                      {apiSwitchNoticeSubmitting
+                        ? t('common.processing', '处理中...')
+                        : t('codex.apiSwitchNotice.switchAndRepair', '切换并修复一次')}
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>

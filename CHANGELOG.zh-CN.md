@@ -7,6 +7,23 @@
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)。
 
 ---
+## [0.22.16] - 2026-04-30
+
+### 变更
+- **Codex OAuth Token 管理现改为受保护的官方客户端刷新链路**：刷新请求使用官方 JSON 请求体与 connector scopes；账号刷新前会先读取同账号更新的官方 Keychain/auth 快照；TokenKeeper 按 8 天周期执行受保护保活，确保已轮换的 Token 链先写回，避免继续复用旧 `refresh_token`。
+- **WorkBuddy 切号现直接写入共享客户端 auth 文件**：切号、注入与本机导入统一使用 `CodeBuddyExtension/Data/Public/auth/workbuddy-desktop.info`，不再依赖 VS Code `state.vscdb` secret 注入，落盘结构与当前桌面客户端保持一致，也不要求用户先具备 Keychain 加密 secret。
+- **GitHub Copilot 账号展示现可区分 PRO+ 高级额度**：套餐徽标、筛选、仪表盘卡片、悬浮卡片、实例徽标与额度展示均识别 PRO+，在拿到精确计数时会以已用/总量展示 premium requests。
+- **Trae OAuth 登录现归一应用版本与产品信息检测**：登录上下文可从应用目录或可执行文件路径识别产品信息，授权请求的应用版本最低使用 `3.5.54`，不再回退到过旧的插件/本地版本字段。
+- **Codex 账号概览现支持自定义排序与更安全的 API 模式切换**：用户可持久化自定义展示顺序；从 OAuth 切换到 API Key/API 服务时会提示会话可见性影响，并可在本次切换后立即执行一次修复。
+
+### 修复
+- **Codex 授权失败现会说明真实的 refresh-token 失败原因**：已复用、过期、被撤销、无效或缺失的 refresh token 会提示重新登录；`unsupported_country_region_territory` 会提示切换网络地区，不再把账号标记为永久需要重新授权。
+- **实例后台自动刷新不再打断已打开的实例菜单或弹框**：当行内菜单或实例弹框打开时，后台实例刷新会暂停。
+
+### 移除
+- **已移除官方 Linux/Ubuntu 发布支持**：发布工作流不再构建 Ubuntu 安装包，更新器元数据不再要求 Linux AppImage/deb/rpm 资产，官方文档现仅将 macOS 与 Windows 列为受支持桌面平台。
+
+---
 ## [0.22.15] - 2026-04-29
 
 ### 变更

@@ -1599,6 +1599,14 @@
     "switch": "Cambiar",
     "switched": "Cambiado a {{email}}",
     "switchFailed": "Error al cambiar: {{error}}",
+    "authError": {
+      "badge": "Problema de autorización",
+      "refreshTokenReused": "La autorización de Codex no es válida: otro cliente o instancia ya usó el refresh_token. Inicia sesión de nuevo y evita actualizar la misma cuenta al mismo tiempo desde Codex oficial, otras instancias o herramientas externas.",
+      "refreshTokenExpired": "La autorización de inicio de sesión de Codex caducó y no puede renovarse automáticamente. Inicia sesión de nuevo en la cuenta de Codex.",
+      "refreshTokenInvalidated": "El servicio revocó la autorización de inicio de sesión de Codex y no puede renovarse automáticamente. Inicia sesión de nuevo en la cuenta de Codex.",
+      "invalidGrant": "La autorización de inicio de sesión de Codex no es válida y no puede renovarse automáticamente. Inicia sesión de nuevo en la cuenta de Codex.",
+      "unsupportedCountryRegion": "La región de red actual no permite renovar la autorización de Codex. El servicio de autorización de OpenAI rechazó esta salida de red. Cambia a una región compatible y vuelve a intentarlo."
+    },
     "current": "Actual",
     "empty": {
       "description": "Haz clic en \"Agregar cuenta\" para comenzar"
@@ -1815,7 +1823,14 @@
       "hourly": "Cuota 5 horas",
       "weeklyReset": "Hora de restablecimiento semanal",
       "hourlyReset": "Hora de restablecimiento de 5 horas",
-      "subscriptionExpiry": "Vencimiento de suscripción"
+      "subscriptionExpiry": "Vencimiento de suscripción",
+      "custom": "Orden personalizado",
+      "customModalTitle": "Orden de cuentas",
+      "customModalDesc": "Arrastra cuentas o usa los botones arriba/abajo para ajustar el orden.",
+      "customDragHandle": "Arrastrar para ordenar",
+      "customMoveUp": "Subir",
+      "customMoveDown": "Bajar",
+      "customReset": "Restablecer orden"
     },
     "opencodeSwitch": "Interruptor de OpenCode",
     "opencodeSwitchDesc": "Sincronizar el cambio de cuenta de Codex en OpenCode",
@@ -2281,6 +2296,14 @@
       "filterWithin7d": "7 d ({{count}})",
       "filterWithin30d": "30 d ({{count}})",
       "filterMissing": "Desconocidas ({{count}})"
+    },
+    "apiSwitchNotice": {
+      "title": "Las sesiones pueden ocultarse temporalmente tras cambiar a API",
+      "message": "Por el comportamiento oficial de Codex, las sesiones existentes pueden no aparecer automáticamente tras cambiar a API Key / API Service. Puedes restaurarlas luego en Gestión de sesiones > Reparar visibilidad, o ejecutar una reparación rápida durante este cambio.",
+      "dontAskAgain": "No volver a mostrar",
+      "switchOnly": "Solo cambiar",
+      "switchAndRepair": "Cambiar y reparar",
+      "repairFailed": "El cambio se completó, pero falló la reparación rápida. Puedes reintentarlo luego en Gestión de sesiones > Reparar visibilidad."
     }
   },
   "githubCopilot": {
@@ -2319,7 +2342,8 @@
       "premium": "Solicitudes premium"
     },
     "usage": {
-      "included": "Incluido"
+      "included": "Incluido",
+      "usedOfTotal": "{{used}} de {{total}}"
     },
     "injectToVSCode": "Cambiar a VS Code",
     "injectSuccess": "El token se inyectó correctamente en VS Code. VS Code se está iniciando.",
@@ -3372,11 +3396,11 @@
       "status": "Estado del registro",
       "checkedIn": "Registrado",
       "notCheckedIn": "Sin registrar",
-      "button": {},
+      "button": "Registrar",
       "button.loading": "Registrando...",
       "done": "Hecho",
       "success": "¡Registro exitoso! Racha de {{days}} días",
-      "failure": {},
+      "failure": "Error al registrar: {{message}}",
       "failure.network": "Error de red, inténtalo de nuevo más tarde",
       "lastCheckin": "Último registro: {{time}}",
       "streak": "Racha de {{days}} días",
@@ -3407,9 +3431,9 @@
     "addAccount": "Agregar cuenta de WorkBuddy",
     "flowNotice": {
       "title": "Información de gestión de cuentas de WorkBuddy (clic para expandir/contraer)",
-      "desc": "Al cambiar de cuenta es necesario leer el almacenamiento de autenticación local de WorkBuddy y usar el servicio de credenciales del sistema para descifrar y volver a cifrar. Los datos solo se procesan localmente.",
-      "permission": "Alcance de permisos: leer la base de datos de autenticación de WorkBuddy (state.vscdb) y usar las capacidades de credenciales del sistema (macOS Keychain / Windows DPAPI / Linux Secret Service) para descifrar y reescribir.",
-      "network": "Alcance de red: el inicio de sesión OAuth y la actualización del Token requieren solicitudes a WorkBuddy; la consulta de cuota usa APIs de facturación. No se suben claves ni credenciales locales."
+      "desc": "El cambio de cuenta escribe el archivo local de inicio de sesión con la estructura más reciente del cliente oficial de WorkBuddy; la importación local lee el mismo archivo. Los datos solo se procesan localmente.",
+      "permission": "Alcance de permisos: leer y escribir el archivo de inicio de sesión de WorkBuddy (CodeBuddyExtension/Data/Public/auth/workbuddy-desktop.info) para importación local y cambio de cuenta; el state.vscdb heredado ya no se lee ni modifica.",
+      "network": "Alcance de red: el inicio de sesión OAuth y la actualización del Token requieren solicitudes a WorkBuddy; la consulta de cuota usa APIs de facturación. No se suben archivos locales de inicio de sesión ni credenciales sin procesar."
     },
     "nickname": "Apodo",
     "enterprise": "Empresa",

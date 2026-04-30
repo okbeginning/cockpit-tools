@@ -1599,6 +1599,14 @@
     "switch": "切替",
     "switched": "{{email}} に切り替えました",
     "switchFailed": "切り替え失敗: {{error}}",
+    "authError": {
+      "badge": "認証エラー",
+      "refreshTokenReused": "Codex の認証が無効です。refresh_token は別のクライアントまたはインスタンスで既に使用されています。再ログインし、公式 Codex、他のインスタンス、外部ツールで同じアカウントを同時に更新しないでください。",
+      "refreshTokenExpired": "Codex のログイン認証が期限切れで、自動更新できません。Codex アカウントに再ログインしてください。",
+      "refreshTokenInvalidated": "Codex のログイン認証がサービス側で取り消され、自動更新できません。Codex アカウントに再ログインしてください。",
+      "invalidGrant": "Codex のログイン認証が無効で、自動更新できません。Codex アカウントに再ログインしてください。",
+      "unsupportedCountryRegion": "現在のネットワーク地域では Codex 認証を更新できません。OpenAI 認証サービスがこのネットワーク出口を拒否しました。対応地域に切り替えてから再試行してください。"
+    },
     "current": "現在",
     "empty": {
       "description": "「アカウントを追加」から Codex アカウントを管理できます"
@@ -1815,7 +1823,14 @@
       "hourly": "5時間クォータ",
       "weeklyReset": "週間クォータのリセット時間",
       "hourlyReset": "5時間クォータのリセット時間",
-      "subscriptionExpiry": "契約期限"
+      "subscriptionExpiry": "契約期限",
+      "custom": "カスタム順",
+      "customModalTitle": "アカウントのカスタム順",
+      "customModalDesc": "アカウントをドラッグするか上下ボタンで表示順を調整します。",
+      "customDragHandle": "ドラッグして並べ替え",
+      "customMoveUp": "上へ",
+      "customMoveDown": "下へ",
+      "customReset": "順序をリセット"
     },
     "opencodeSwitch": "OpenCode 切り替えスイッチ",
     "opencodeSwitchDesc": "OpenCode 内の Codex アカウント情報を同期して切り替え",
@@ -2281,6 +2296,14 @@
       "filterWithin7d": "7日 ({{count}})",
       "filterWithin30d": "30日 ({{count}})",
       "filterMissing": "不明 ({{count}})"
+    },
+    "apiSwitchNotice": {
+      "title": "API 切り替え後にセッションが一時的に非表示になる場合があります",
+      "message": "Codex 公式の動作により、API Key / API Service へ切り替えた後、既存のセッションが自動表示されない場合があります。後でセッション管理 > 表示を修復から復元するか、今回の切り替え時に一度だけクイック修復できます。",
+      "dontAskAgain": "今後表示しない",
+      "switchOnly": "切り替えのみ",
+      "switchAndRepair": "切替と修復",
+      "repairFailed": "切り替えは完了しましたが、クイック修復に失敗しました。後でセッション管理 > 表示を修復から再試行できます。"
     }
   },
   "githubCopilot": {
@@ -2319,7 +2342,8 @@
       "premium": "プレミアム リクエスト"
     },
     "usage": {
-      "included": "含まれる"
+      "included": "含まれる",
+      "usedOfTotal": "{{used}} / {{total}} 使用"
     },
     "injectToVSCode": "VS Codeに切り替え",
     "injectSuccess": "トークンをVS Codeに正常に注入しました。VS Codeを起動しています。",
@@ -3372,11 +3396,11 @@
       "status": "チェックイン状態",
       "checkedIn": "チェックイン済み",
       "notCheckedIn": "未チェックイン",
-      "button": {},
+      "button": "チェックイン",
       "button.loading": "チェックイン中...",
       "done": "完了",
       "success": "チェックイン成功！{{days}}日連続",
-      "failure": {},
+      "failure": "チェックイン失敗: {{message}}",
       "failure.network": "ネットワークエラーです。しばらくしてから再試行してください",
       "lastCheckin": "最終チェックイン: {{time}}",
       "streak": "{{days}}日連続",
@@ -3407,9 +3431,9 @@
     "addAccount": "WorkBuddy アカウントを追加",
     "flowNotice": {
       "title": "WorkBuddy アカウント管理ガイド（クリックで展開/折りたたみ）",
-      "desc": "アカウント切り替えには、WorkBuddy のローカル認証ストレージを読み取り、システム資格情報サービスで復号・再暗号化する必要があります。データはローカルでのみ処理されます。",
-      "permission": "権限範囲：WorkBuddy 認証データベース（state.vscdb）を読み取り、システム資格情報機能（macOS Keychain / Windows DPAPI / Linux Secret Service）を呼び出して復号・書き戻しを行います。",
-      "network": "ネットワーク範囲：OAuth ログインと Token 更新では WorkBuddy へのリクエストが必要で、クォータ照会では課金 API を呼び出します。ローカルの鍵や認証情報はアップロードされません。"
+      "desc": "アカウント切り替えでは、最新の WorkBuddy 公式クライアントの形式に従ってローカルのログインファイルを書き込みます。ローカルインポートも同じファイルを読み取ります。データはローカルでのみ処理されます。",
+      "permission": "権限範囲：ローカルインポートとアカウント切り替えのために WorkBuddy のログインファイル（CodeBuddyExtension/Data/Public/auth/workbuddy-desktop.info）を読み書きします。旧 state.vscdb は読み取りも変更もしません。",
+      "network": "ネットワーク範囲：OAuth ログインと Token 更新では WorkBuddy へのリクエストが必要で、クォータ照会では課金 API を呼び出します。ローカルのログインファイルや生の認証情報はアップロードされません。"
     },
     "nickname": "ニックネーム",
     "enterprise": "企業",

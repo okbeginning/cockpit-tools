@@ -1599,6 +1599,14 @@
     "switch": "Chuyển",
     "switched": "Đã chuyển sang {{email}}",
     "switchFailed": "Chuyển thất bại: {{error}}",
+    "authError": {
+      "badge": "Lỗi ủy quyền",
+      "refreshTokenReused": "Ủy quyền Codex không hợp lệ: refresh_token đã được dùng bởi máy khách hoặc phiên bản khác. Hãy đăng nhập lại và tránh làm mới cùng một tài khoản đồng thời từ Codex chính thức, phiên bản khác hoặc công cụ bên ngoài.",
+      "refreshTokenExpired": "Ủy quyền đăng nhập Codex đã hết hạn và không thể tự động làm mới. Hãy đăng nhập lại tài khoản Codex.",
+      "refreshTokenInvalidated": "Ủy quyền đăng nhập Codex đã bị dịch vụ thu hồi và không thể tự động làm mới. Hãy đăng nhập lại tài khoản Codex.",
+      "invalidGrant": "Ủy quyền đăng nhập Codex không hợp lệ và không thể tự động làm mới. Hãy đăng nhập lại tài khoản Codex.",
+      "unsupportedCountryRegion": "Khu vực mạng hiện tại không hỗ trợ làm mới ủy quyền Codex. Dịch vụ ủy quyền OpenAI đã từ chối lối ra mạng này. Hãy chuyển sang khu vực được hỗ trợ rồi thử lại."
+    },
     "current": "Hiện tại",
     "empty": {
       "description": "Nhấn \"Thêm tài khoản\" để bắt đầu"
@@ -1815,7 +1823,14 @@
       "hourly": "Hạn mức 5 giờ",
       "weeklyReset": "Thời gian đặt lại theo tuần",
       "hourlyReset": "Thời gian đặt lại 5 giờ",
-      "subscriptionExpiry": "Hạn gói"
+      "subscriptionExpiry": "Hạn gói",
+      "custom": "Thứ tự tùy chỉnh",
+      "customModalTitle": "Thứ tự tài khoản",
+      "customModalDesc": "Kéo tài khoản hoặc dùng nút lên/xuống để chỉnh thứ tự hiển thị.",
+      "customDragHandle": "Kéo để sắp xếp",
+      "customMoveUp": "Lên",
+      "customMoveDown": "Xuống",
+      "customReset": "Đặt lại thứ tự"
     },
     "opencodeSwitch": "Công tắc OpenCode",
     "opencodeSwitchDesc": "Đồng bộ chuyển đổi tài khoản Codex trong OpenCode",
@@ -2281,6 +2296,14 @@
       "filterWithin7d": "7 ngày ({{count}})",
       "filterWithin30d": "30 ngày ({{count}})",
       "filterMissing": "Không rõ ({{count}})"
+    },
+    "apiSwitchNotice": {
+      "title": "Phiên có thể tạm ẩn sau khi chuyển sang API",
+      "message": "Do hành vi chính thức của Codex, các phiên hiện có có thể không tự hiện sau khi chuyển sang API Key / API Service. Bạn có thể khôi phục sau trong Quản lý phiên > Sửa hiển thị, hoặc chạy một lần sửa nhanh trong lần chuyển này.",
+      "dontAskAgain": "Không hiện lại",
+      "switchOnly": "Chỉ chuyển",
+      "switchAndRepair": "Chuyển & sửa",
+      "repairFailed": "Đã chuyển xong nhưng sửa nhanh thất bại. Bạn có thể thử lại sau trong Quản lý phiên > Sửa hiển thị."
     }
   },
   "githubCopilot": {
@@ -2319,7 +2342,8 @@
       "premium": "Yêu cầu Premium"
     },
     "usage": {
-      "included": "Đã bao gồm"
+      "included": "Đã bao gồm",
+      "usedOfTotal": "{{used}} / {{total}} đã dùng"
     },
     "injectToVSCode": "Chuyển sang VS Code",
     "injectSuccess": "Đã chèn token vào VS Code thành công. VS Code đang được khởi chạy.",
@@ -3372,11 +3396,11 @@
       "status": "Trạng thái điểm danh",
       "checkedIn": "Đã điểm danh",
       "notCheckedIn": "Chưa điểm danh",
-      "button": {},
+      "button": "Điểm danh",
       "button.loading": "Đang điểm danh...",
       "done": "Hoàn tất",
       "success": "Điểm danh thành công! Chuỗi {{days}} ngày",
-      "failure": {},
+      "failure": "Điểm danh thất bại: {{message}}",
       "failure.network": "Lỗi mạng, vui lòng thử lại sau",
       "lastCheckin": "Lần điểm danh gần nhất: {{time}}",
       "streak": "Chuỗi {{days}} ngày",
@@ -3407,9 +3431,9 @@
     "addAccount": "Thêm tài khoản WorkBuddy",
     "flowNotice": {
       "title": "Hướng dẫn quản lý tài khoản WorkBuddy (bấm để mở rộng/thu gọn)",
-      "desc": "Khi chuyển tài khoản, ứng dụng cần đọc vùng lưu xác thực cục bộ của WorkBuddy và gọi dịch vụ chứng thực hệ thống để giải mã/mã hóa lại. Dữ liệu chỉ được xử lý cục bộ.",
-      "permission": "Phạm vi quyền: đọc cơ sở dữ liệu xác thực WorkBuddy (state.vscdb), gọi khả năng chứng thực hệ thống (macOS Keychain / Windows DPAPI / Linux Secret Service) để giải mã và ghi lại.",
-      "network": "Phạm vi mạng: đăng nhập OAuth và làm mới Token cần gửi yêu cầu đến WorkBuddy; truy vấn hạn ngạch sẽ gọi API tính phí. Không tải lên khóa hoặc thông tin xác thực cục bộ."
+      "desc": "Khi chuyển tài khoản, ứng dụng ghi tệp đăng nhập cục bộ theo bố cục mới nhất của ứng dụng WorkBuddy chính thức; nhập cục bộ đọc cùng tệp đó. Dữ liệu chỉ được xử lý cục bộ.",
+      "permission": "Phạm vi quyền: đọc và ghi tệp đăng nhập WorkBuddy (CodeBuddyExtension/Data/Public/auth/workbuddy-desktop.info) để nhập cục bộ và chuyển tài khoản; state.vscdb cũ không còn được đọc hoặc sửa đổi.",
+      "network": "Phạm vi mạng: đăng nhập OAuth và làm mới Token cần gửi yêu cầu đến WorkBuddy; truy vấn hạn ngạch sẽ gọi API tính phí. Không tải lên tệp đăng nhập cục bộ hoặc thông tin xác thực thô."
     },
     "nickname": "Biệt danh",
     "enterprise": "Doanh nghiệp",
