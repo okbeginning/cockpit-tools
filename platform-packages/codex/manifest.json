@@ -1,7 +1,7 @@
 {
   "id": "codex",
   "platformId": "codex",
-  "version": "0.26.8",
+  "version": "0.26.9",
   "apiVersion": 1,
   "minCoreVersion": "0.26.5",
   "displayName": "Codex",
@@ -32,6 +32,28 @@
     "cli"
   ],
   "changelog": [
+    {
+      "version": "0.26.9",
+      "date": "2026-06-29",
+      "notes": [
+        "Repairs Codex account migration after upgrading from legacy JSON storage to the platform account database.",
+        "When old JSON account files contain accounts missing from SQLite, the adapter now restores the missing records without overwriting existing database records."
+      ],
+      "locales": {
+        "zh-CN": {
+          "notes": [
+            "修复从旧版 JSON 账号存储升级到平台账号数据库后，Codex 账号数量可能变少的问题。",
+            "当旧账号文件中存在 SQLite 缺失的账号时，adapter 会自动补齐缺失记录，同时不会覆盖数据库中已有账号。"
+          ]
+        },
+        "zh-TW": {
+          "notes": [
+            "修復從舊版 JSON 帳號儲存升級到平台帳號資料庫後，Codex 帳號數量可能變少的問題。",
+            "當舊帳號檔案中存在 SQLite 缺少的帳號時，adapter 會自動補齊缺少記錄，同時不會覆蓋資料庫中既有帳號。"
+          ]
+        }
+      }
+    },
     {
       "version": "0.26.8",
       "date": "2026-06-27",

@@ -222,6 +222,42 @@ fn platform_is_migrated_tx(tx: &Transaction<'_>, platform: &str) -> Result<bool,
     })
 }
 
+fn account_exists_tx(
+    tx: &Transaction<'_>,
+    platform: &str,
+    account_id: &str,
+) -> Result<bool, String> {
+    tx.query_row(
+        "SELECT 1 FROM account_records WHERE platform = ?1 AND id = ?2 LIMIT 1",
+        params![platform, account_id],
+        |_| Ok(()),
+    )
+    .optional()
+    .map(|item| item.is_some())
+    .map_err(|error| {
+        format!(
+            "读取账号数据库记录状态失败: platform={}, id={}, error={}",
+            platform, account_id, error
+        )
+    })
+}
+
+fn current_account_id_tx(tx: &Transaction<'_>, platform: &str) -> Result<Option<String>, String> {
+    tx.query_row(
+        "SELECT current_account_id FROM account_platform_state WHERE platform = ?1",
+        [platform],
+        |row| row.get::<_, Option<String>>(0),
+    )
+    .optional()
+    .map(|item| item.flatten())
+    .map_err(|error| {
+        format!(
+            "读取当前账号状态失败: platform={}, error={}",
+            platform, error
+        )
+    })
+}
+
 fn upsert_account_value_tx(
     tx: &Transaction<'_>,
     platform: &str,
@@ -272,19 +308,13 @@ fn upsert_account_value_tx(
     Ok(())
 }
 
-pub fn ensure_platform_migrated_from_json(
-    platform: &str,
+fn read_json_index_state(
     index_path: &Path,
-    accounts_dir: &Path,
-) -> Result<(), String> {
-    let mut conn = open_connection()?;
-    let tx = conn
-        .transaction()
-        .map_err(|error| format!("创建账号迁移事务失败: {}", error))?;
-    if platform_is_migrated_tx(&tx, platform)? {
-        return Ok(());
-    }
-
+) -> (
+    Option<Value>,
+    Option<String>,
+    std::collections::HashMap<String, i64>,
+) {
     let index_value = fs::read_to_string(index_path)
         .ok()
         .and_then(|content| serde_json::from_str::<Value>(&content).ok());
@@ -304,85 +334,207 @@ pub fn ensure_platform_migrated_from_json(
                 .collect::<std::collections::HashMap<_, _>>()
         })
         .unwrap_or_default();
+    (index_value, current_account_id, ordered_ids)
+}
 
+fn import_json_accounts_tx(
+    tx: &Transaction<'_>,
+    platform: &str,
+    accounts_dir: &Path,
+    ordered_ids: &std::collections::HashMap<String, i64>,
+    missing_only: bool,
+) -> Result<Vec<String>, String> {
     let mut imported_ids = Vec::new();
-    if accounts_dir.exists() {
-        let entries = fs::read_dir(accounts_dir).map_err(|error| {
-            format!(
-                "扫描账号详情目录失败: platform={}, dir={}, error={}",
-                platform,
-                accounts_dir.display(),
-                error
-            )
-        })?;
+    if !accounts_dir.exists() {
+        return Ok(imported_ids);
+    }
 
-        for entry in entries {
-            let entry = match entry {
-                Ok(entry) => entry,
-                Err(error) => {
-                    logger::log_warn(&format!(
-                        "[AccountStore] 跳过无法读取的账号目录项: platform={}, dir={}, error={}",
-                        platform,
-                        accounts_dir.display(),
-                        error
-                    ));
-                    continue;
-                }
-            };
-            let path = entry.path();
-            let is_json = path
-                .extension()
-                .and_then(|item| item.to_str())
-                .map(|item| item.eq_ignore_ascii_case("json"))
-                .unwrap_or(false);
-            if !is_json {
-                continue;
-            }
-            let file_name = path
-                .file_name()
-                .and_then(|item| item.to_str())
-                .unwrap_or_default();
-            if file_name.ends_with(".bak") {
-                continue;
-            }
+    let entries = fs::read_dir(accounts_dir).map_err(|error| {
+        format!(
+            "扫描账号详情目录失败: platform={}, dir={}, error={}",
+            platform,
+            accounts_dir.display(),
+            error
+        )
+    })?;
 
-            let content = match fs::read_to_string(&path) {
-                Ok(content) => content,
-                Err(error) => {
-                    logger::log_warn(&format!(
-                        "[AccountStore] 跳过无法读取的账号详情: platform={}, path={}, error={}",
-                        platform,
-                        path.display(),
-                        error
-                    ));
-                    continue;
-                }
-            };
-            let value = match serde_json::from_str::<Value>(&content) {
-                Ok(value) => value,
-                Err(error) => {
-                    logger::log_warn(&format!(
-                        "[AccountStore] 跳过无法解析的账号详情: platform={}, path={}, error={}",
-                        platform,
-                        path.display(),
-                        error
-                    ));
-                    continue;
-                }
-            };
-            let Some(id) = id_from_value_or_path(&value, &path) else {
+    for entry in entries {
+        let entry = match entry {
+            Ok(entry) => entry,
+            Err(error) => {
                 logger::log_warn(&format!(
-                    "[AccountStore] 跳过缺少 id 的账号详情: platform={}, path={}",
+                    "[AccountStore] 跳过无法读取的账号目录项: platform={}, dir={}, error={}",
                     platform,
-                    path.display()
+                    accounts_dir.display(),
+                    error
                 ));
                 continue;
-            };
-            let sort_order = ordered_ids.get(&id).copied();
-            upsert_account_value_tx(&tx, platform, &id, &value, sort_order)?;
-            imported_ids.push(id);
+            }
+        };
+        let path = entry.path();
+        let is_json = path
+            .extension()
+            .and_then(|item| item.to_str())
+            .map(|item| item.eq_ignore_ascii_case("json"))
+            .unwrap_or(false);
+        if !is_json {
+            continue;
         }
+        let file_name = path
+            .file_name()
+            .and_then(|item| item.to_str())
+            .unwrap_or_default();
+        if file_name.ends_with(".bak") {
+            continue;
+        }
+
+        let content = match fs::read_to_string(&path) {
+            Ok(content) => content,
+            Err(error) => {
+                logger::log_warn(&format!(
+                    "[AccountStore] 跳过无法读取的账号详情: platform={}, path={}, error={}",
+                    platform,
+                    path.display(),
+                    error
+                ));
+                continue;
+            }
+        };
+        let value = match serde_json::from_str::<Value>(&content) {
+            Ok(value) => value,
+            Err(error) => {
+                logger::log_warn(&format!(
+                    "[AccountStore] 跳过无法解析的账号详情: platform={}, path={}, error={}",
+                    platform,
+                    path.display(),
+                    error
+                ));
+                continue;
+            }
+        };
+        let Some(id) = id_from_value_or_path(&value, &path) else {
+            logger::log_warn(&format!(
+                "[AccountStore] 跳过缺少 id 的账号详情: platform={}, path={}",
+                platform,
+                path.display()
+            ));
+            continue;
+        };
+        if missing_only && account_exists_tx(tx, platform, &id)? {
+            continue;
+        }
+        let sort_order = ordered_ids.get(&id).copied();
+        upsert_account_value_tx(tx, platform, &id, &value, sort_order)?;
+        imported_ids.push(id);
     }
+
+    Ok(imported_ids)
+}
+
+pub fn ensure_platform_migrated_from_json(
+    platform: &str,
+    index_path: &Path,
+    accounts_dir: &Path,
+) -> Result<(), String> {
+    let mut conn = open_connection()?;
+    let tx = conn
+        .transaction()
+        .map_err(|error| format!("创建账号迁移事务失败: {}", error))?;
+    if platform_is_migrated_tx(&tx, platform)? {
+        let (_, current_account_id, ordered_ids) = read_json_index_state(index_path);
+        let imported_ids =
+            import_json_accounts_tx(&tx, platform, accounts_dir, &ordered_ids, true)?;
+        let should_restore_current_account_id = if current_account_id_tx(&tx, platform)?.is_none() {
+            match current_account_id.as_deref() {
+                Some(current_id) if account_exists_tx(&tx, platform, current_id)? => {
+                    Some(current_id.to_string())
+                }
+                _ => None,
+            }
+        } else {
+            None
+        };
+        if !imported_ids.is_empty() {
+            if let Some(current_account_id) = should_restore_current_account_id {
+                tx.execute(
+                    r#"
+                    INSERT INTO account_platform_state (platform, current_account_id, updated_at)
+                    VALUES (?1, ?2, ?3)
+                    ON CONFLICT(platform) DO UPDATE SET
+                        current_account_id = excluded.current_account_id,
+                        updated_at = excluded.updated_at
+                    "#,
+                    params![platform, current_account_id, now_timestamp()],
+                )
+                .map_err(|error| {
+                    format!(
+                        "写入当前账号状态失败: platform={}, account_id={:?}, error={}",
+                        platform, current_account_id, error
+                    )
+                })?;
+            }
+            tx.execute(
+                r#"
+                UPDATE account_store_migrations
+                SET account_count = account_count + ?1,
+                    migrated_at = ?2
+                WHERE platform = ?3
+                "#,
+                params![
+                    i64::try_from(imported_ids.len()).unwrap_or(0),
+                    now_timestamp(),
+                    platform
+                ],
+            )
+            .map_err(|error| {
+                format!(
+                    "更新账号迁移状态失败: platform={}, error={}",
+                    platform, error
+                )
+            })?;
+            tx.commit().map_err(|error| {
+                format!(
+                    "提交账号增量迁移事务失败: platform={}, error={}",
+                    platform, error
+                )
+            })?;
+            logger::log_info(&format!(
+                "[AccountStore] 已补齐平台 JSON 中缺失的 SQLite 账号: platform={}, accounts={}, accounts_dir={}",
+                platform,
+                imported_ids.len(),
+                accounts_dir.display()
+            ));
+            return Ok(());
+        } else if let Some(current_account_id) = should_restore_current_account_id {
+            tx.execute(
+                r#"
+                INSERT INTO account_platform_state (platform, current_account_id, updated_at)
+                VALUES (?1, ?2, ?3)
+                ON CONFLICT(platform) DO UPDATE SET
+                    current_account_id = excluded.current_account_id,
+                    updated_at = excluded.updated_at
+                "#,
+                params![platform, current_account_id, now_timestamp()],
+            )
+            .map_err(|error| {
+                format!(
+                    "写入当前账号状态失败: platform={}, account_id={:?}, error={}",
+                    platform, current_account_id, error
+                )
+            })?;
+            tx.commit().map_err(|error| {
+                format!(
+                    "提交当前账号状态修复事务失败: platform={}, error={}",
+                    platform, error
+                )
+            })?;
+            return Ok(());
+        }
+        return Ok(());
+    }
+
+    let (index_value, current_account_id, ordered_ids) = read_json_index_state(index_path);
+    let imported_ids = import_json_accounts_tx(&tx, platform, accounts_dir, &ordered_ids, false)?;
 
     let current_account_id =
         current_account_id.filter(|id| imported_ids.iter().any(|item| item == id));
@@ -665,7 +817,7 @@ mod tests {
     }
 
     #[test]
-    fn migrates_platform_json_accounts_once() {
+    fn migrates_platform_json_accounts_and_later_repairs_missing_records() {
         let db = TestDbGuard::new("account-store-migration");
         let data_dir = &db.data_dir;
 
@@ -705,11 +857,27 @@ mod tests {
             r#"{"id":"demo-2","email":"demo2@example.com","created_at":30,"last_used":40}"#,
         )
         .expect("write second account");
+        fs::write(
+            accounts_dir.join("demo-1.json"),
+            r#"{"id":"demo-1","email":"changed@example.com","created_at":10,"last_used":20}"#,
+        )
+        .expect("write changed first account");
         ensure_platform_migrated_from_json("demo", &index_path, &accounts_dir)
-            .expect("second migrate noop");
-        assert!(load_account::<TestAccount>("demo", "demo-2")
-            .expect("load second")
-            .is_none());
+            .expect("repair missing account from json");
+        assert_eq!(
+            load_account::<TestAccount>("demo", "demo-2")
+                .expect("load second")
+                .expect("second account should be repaired")
+                .email,
+            "demo2@example.com"
+        );
+        assert_eq!(
+            load_account::<TestAccount>("demo", "demo-1")
+                .expect("load first")
+                .expect("first account exists")
+                .email,
+            "demo@example.com"
+        );
     }
 
     #[test]

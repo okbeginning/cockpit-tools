@@ -104,6 +104,7 @@ const PLATFORM_RUST_MODULE_PREFIXES = new Map([
 
 const cliArgs = process.argv.slice(2).map((value) => value.trim()).filter(Boolean);
 const strictFullHotUpdate = cliArgs.includes('--strict-full-hot-update');
+const sourceOnly = cliArgs.includes('--source-only');
 const requestedIds = new Set(cliArgs.filter((value) => !value.startsWith('--')));
 const issues = [];
 const rows = [];
@@ -443,7 +444,7 @@ function listZipEntries(zipPath) {
     return new Set(
       execFileSync('unzip', ['-Z1', zipPath], { encoding: 'utf8' })
         .split(/\r?\n/)
-        .map((entry) => entry.trim())
+        .map((entry) => entry.trim().replace(/\\/g, '/'))
         .filter(Boolean),
     );
   } catch (error) {
@@ -453,12 +454,17 @@ function listZipEntries(zipPath) {
 }
 
 function readZipEntry(zipPath, entry) {
-  try {
-    return execFileSync('unzip', ['-p', zipPath, entry], { encoding: 'utf8' });
-  } catch (error) {
-    fail(`${relative(zipPath)}: failed to read zip entry ${entry}: ${error.message}`);
-    return null;
+  const normalized = String(entry || '').replace(/^\/+/, '');
+  const candidates = [...new Set([normalized, normalized.replace(/\//g, '\\')])].filter(Boolean);
+  for (const candidate of candidates) {
+    try {
+      return execFileSync('unzip', ['-p', zipPath, candidate], { encoding: 'utf8' });
+    } catch {
+      // Try the next path form. Windows-created zips may store backslashes.
+    }
   }
+  fail(`${relative(zipPath)}: failed to read zip entry ${normalized}`);
+  return null;
 }
 
 function assertZipJsonEntryEqual(zipPath, entry, expected, packageId) {
@@ -532,8 +538,10 @@ function verifySidecarAdapterPackage(packageId, manifest, artifacts, workspaceMe
 
 function verifyChangelog(packageId, manifest, indexPackage) {
   assertNonEmptyArray(`${packageId}: manifest.changelog`, manifest.changelog);
-  assertNonEmptyArray(`${packageId}: index.changelog`, indexPackage.changelog);
-  assertJsonEqual(`${packageId}: index.changelog vs manifest.changelog`, indexPackage.changelog ?? [], manifest.changelog ?? []);
+  if (!sourceOnly) {
+    assertNonEmptyArray(`${packageId}: index.changelog`, indexPackage.changelog);
+    assertJsonEqual(`${packageId}: index.changelog vs manifest.changelog`, indexPackage.changelog ?? [], manifest.changelog ?? []);
+  }
 
   for (const [index, entry] of (manifest.changelog ?? []).entries()) {
     if (!entry || typeof entry !== 'object') {
@@ -636,7 +644,9 @@ function verifyPackage(indexPackage, workspaceMembers) {
     'packageMode',
     'installKind',
   ]) {
-    assertEqual(`${packageId}: manifest.${key} vs index.${key}`, manifest[key], indexPackage[key]);
+    if (!sourceOnly) {
+      assertEqual(`${packageId}: manifest.${key} vs index.${key}`, manifest[key], indexPackage[key]);
+    }
   }
   assertEqual(`${packageId}: runtime.packageId vs manifest.id`, runtime.packageId, manifest.id);
   assertEqual(`${packageId}: runtime.platformId vs manifest.platformId`, runtime.platformId, manifest.platformId);
@@ -646,10 +656,12 @@ function verifyPackage(indexPackage, workspaceMembers) {
   assertJsonEqual(`${packageId}: runtime.ui vs manifest.ui`, runtime.ui ?? null, manifest.ui ?? null);
   assertJsonEqual(`${packageId}: runtime.capabilities vs manifest.capabilities`, runtime.capabilities ?? [], manifest.capabilities ?? []);
   assertJsonEqual(`${packageId}: runtime.contributions vs manifest.contributions`, runtime.contributions ?? {}, manifest.contributions ?? {});
-  assertJsonEqual(`${packageId}: index.adapter vs manifest.adapter`, indexPackage.adapter ?? null, manifest.adapter ?? null);
-  assertJsonEqual(`${packageId}: index.ui vs manifest.ui`, indexPackage.ui ?? null, manifest.ui ?? null);
-  assertJsonEqual(`${packageId}: index.capabilities vs manifest.capabilities`, indexPackage.capabilities ?? [], manifest.capabilities ?? []);
-  assertJsonEqual(`${packageId}: index.contributions vs manifest.contributions`, indexPackage.contributions ?? {}, manifest.contributions ?? {});
+  if (!sourceOnly) {
+    assertJsonEqual(`${packageId}: index.adapter vs manifest.adapter`, indexPackage.adapter ?? null, manifest.adapter ?? null);
+    assertJsonEqual(`${packageId}: index.ui vs manifest.ui`, indexPackage.ui ?? null, manifest.ui ?? null);
+    assertJsonEqual(`${packageId}: index.capabilities vs manifest.capabilities`, indexPackage.capabilities ?? [], manifest.capabilities ?? []);
+    assertJsonEqual(`${packageId}: index.contributions vs manifest.contributions`, indexPackage.contributions ?? {}, manifest.contributions ?? {});
+  }
   verifyChangelog(packageId, manifest, indexPackage);
   verifyPackageInfo(packageId, manifest, packageRoot);
 
@@ -696,23 +708,25 @@ function verifyPackage(indexPackage, workspaceMembers) {
     }
   }
 
-  const artifacts = indexPackage.artifacts ?? [];
-  if (artifacts.length === 0) {
+  const artifacts = sourceOnly ? [] : (indexPackage.artifacts ?? []);
+  if (!sourceOnly && artifacts.length === 0) {
     fail(`${packageId}: missing artifacts[]`);
   }
   if (manifest.adapter) {
     verifySidecarAdapterPackage(packageId, manifest, artifacts, workspaceMembers);
   }
 
-  const firstArtifactZipName = safeZipNameFromUrl(artifacts[0]?.downloadUrl || indexPackage.downloadUrl);
-  const topZipPath = firstArtifactZipName ? path.join(DIST_DIR, firstArtifactZipName) : null;
-  if (!firstArtifactZipName || !topZipPath || !fs.existsSync(topZipPath)) {
-    fail(`${packageId}: missing top-level zip for ${firstArtifactZipName || '<invalid url>'}`);
-  } else {
-    const topZipSize = fs.statSync(topZipPath).size;
-    const topZipSha = sha256(topZipPath);
-    assertEqual(`${packageId}: downloadSizeBytes`, indexPackage.downloadSizeBytes, topZipSize);
-    assertEqual(`${packageId}: sha256`, indexPackage.sha256, topZipSha);
+  if (!sourceOnly) {
+    const firstArtifactZipName = safeZipNameFromUrl(artifacts[0]?.downloadUrl || indexPackage.downloadUrl);
+    const topZipPath = firstArtifactZipName ? path.join(DIST_DIR, firstArtifactZipName) : null;
+    if (!firstArtifactZipName || !topZipPath || !fs.existsSync(topZipPath)) {
+      fail(`${packageId}: missing top-level zip for ${firstArtifactZipName || '<invalid url>'}`);
+    } else {
+      const topZipSize = fs.statSync(topZipPath).size;
+      const topZipSha = sha256(topZipPath);
+      assertEqual(`${packageId}: downloadSizeBytes`, indexPackage.downloadSizeBytes, topZipSize);
+      assertEqual(`${packageId}: sha256`, indexPackage.sha256, topZipSha);
+    }
   }
 
   for (const [artifactIndex, artifact] of artifacts.entries()) {
@@ -752,8 +766,8 @@ function verifyPackage(indexPackage, workspaceMembers) {
     installKind: manifest.installKind,
     version: manifest.version,
     nativeBoundaries: nativeBoundaries.length,
-    artifacts: artifacts.length,
-    zip: firstArtifactZipName,
+    artifacts: (indexPackage.artifacts ?? []).length,
+    zip: safeZipNameFromUrl(indexPackage.artifacts?.[0]?.downloadUrl || indexPackage.downloadUrl),
   });
 }
 

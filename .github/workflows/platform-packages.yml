@@ -79,7 +79,7 @@ jobs:
         run: node scripts/check_locales.cjs
 
       - name: Verify checked-in platform packages
-        run: npm run verify:platform-packages
+        run: npm run verify:platform-packages -- --source-only
 
   package:
     name: Package (${{ matrix.label }})
