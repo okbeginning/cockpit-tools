@@ -281,6 +281,9 @@ jobs:
               esac
 
               target="release-assets/${base}"
+              if [[ "$base" != Cockpit.Tools* ]]; then
+                continue
+              fi
               if [ -e "$target" ]; then
                 if cmp -s "$file" "$target"; then
                   continue
@@ -401,7 +404,6 @@ jobs:
           gh release create "${TAG}" release-assets/* \
             --repo "${GITHUB_REPOSITORY}" \
             --draft \
-            --prerelease=false \
             --title "Cockpit Tools v${VERSION}" \
             --notes-file release-notes.md \
             --target "${GITHUB_SHA}"
